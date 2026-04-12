@@ -1,0 +1,178 @@
+inverter                         3700
+devise serial number             92632412100294
+Operating mode                   Off-Grid Mode
+Grid Voltage(V)                  257.5
+Grid Frequency(Hz)               50.01
+Grid Power(W)                    0
+AC charging power(W)             0
+Output Voltage(V)                220.2 
+Output Current(A)                1.3 
+Output frequency(HZ)             50.00 
+Output Active Power(W)           252  
+Output Apparent Power(VA)        286 
+Battery Voltage(V)               58.0 
+Battery Current(A)               0.0  
+Battery Power(W)                 0     
+PV Voltage(V)                    254.5    
+PV Current(A)                    1.0  
+PV Power(W)                      256 
+PV Charge Power(W)               0
+Load Percent(%)                  4 
+DC Module Termperature(°C)       22 
+INV Module Termperature(°C)      26     
+Battery Current(A)               0.0 
+AC charging current(A)           0.0 
+PV charging current(A)           0.0 
+Output priority                  SBU
+Output Voltage Setting(V)        220.0
+Output frequency(HZ)             50.00
+Charger Source Priority          Only PV charging is allowed
+    
+
+
+
+reg: 112 | HEX: 0x0070 | Value: 13952 (0x3680)
+reg: 113 | HEX: 0x0071 | Value: 4343 (0x10F7)
+reg: 115 | HEX: 0x0073 | Value: 593 (0x0251)
+reg: 171 | HEX: 0x00AB | Value: 14080 (0x3700)
+reg: 184 | HEX: 0x00B8 | Value: 1 (0x0001)
+reg: 200 | HEX: 0x00C8 | Value: 33536 (0x8300)
+reg: 201 | HEX: 0x00C9 | Value: 3 (0x0003)
+reg: 202 | HEX: 0x00CA | Value: 2587 (0x0A1B)
+reg: 203 | HEX: 0x00CB | Value: 5005 (0x138D)
+reg: 205 | HEX: 0x00CD | Value: 2195 (0x0893)
+reg: 206 | HEX: 0x00CE | Value: 25 (0x0019)
+reg: 207 | HEX: 0x00CF | Value: 5001 (0x1389)
+reg: 208 | HEX: 0x00D0 | Value: 225 (0x00E1)
+reg: 210 | HEX: 0x00D2 | Value: 2199 (0x0897)
+reg: 211 | HEX: 0x00D3 | Value: 12 (0x000C)
+reg: 212 | HEX: 0x00D4 | Value: 5002 (0x138A)
+reg: 213 | HEX: 0x00D5 | Value: 245 (0x00F5)
+reg: 214 | HEX: 0x00D6 | Value: 264 (0x0108)
+reg: 215 | HEX: 0x00D7 | Value: 580 (0x0244)
+reg: 216 | HEX: 0x00D8 | Value: 7 (0x0007)
+reg: 218 | HEX: 0x00DA | Value: 4793 (0x12B9)
+reg: 219 | HEX: 0x00DB | Value: 2537 (0x09E9)
+reg: 220 | HEX: 0x00DC | Value: 12 (0x000C)
+reg: 223 | HEX: 0x00DF | Value: 297 (0x0129)
+reg: 225 | HEX: 0x00E1 | Value: 4 (0x0004)
+reg: 226 | HEX: 0x00E2 | Value: 23 (0x0017)
+reg: 227 | HEX: 0x00E3 | Value: 26 (0x001A)
+reg: 228 | HEX: 0x00E4 | Value: 23 (0x0017)
+reg: 229 | HEX: 0x00E5 | Value: 100 (0x0064)
+reg: 231 | HEX: 0x00E7 | Value: 593 (0x0251)
+reg: 301 | HEX: 0x012D | Value: 2 (0x0002)
+reg: 302 | HEX: 0x012E | Value: 1 (0x0001)
+reg: 308 | HEX: 0x0134 | Value: 1 (0x0001)
+reg: 309 | HEX: 0x0135 | Value: 1 (0x0001)
+reg: 310 | HEX: 0x0136 | Value: 1 (0x0001)
+reg: 320 | HEX: 0x0140 | Value: 2200 (0x0898)
+reg: 321 | HEX: 0x0141 | Value: 5000 (0x1388)
+reg: 322 | HEX: 0x0142 | Value: 2 (0x0002)
+reg: 323 | HEX: 0x0143 | Value: 600 (0x0258)
+reg: 324 | HEX: 0x0144 | Value: 582 (0x0246)
+reg: 325 | HEX: 0x0145 | Value: 580 (0x0244)
+reg: 326 | HEX: 0x0146 | Value: 505 (0x01F9)
+reg: 327 | HEX: 0x0147 | Value: 475 (0x01DB)
+reg: 329 | HEX: 0x0149 | Value: 440 (0x01B8)
+reg: 331 | HEX: 0x014B | Value: 3 (0x0003)
+reg: 332 | HEX: 0x014C | Value: 600 (0x0258)
+reg: 333 | HEX: 0x014D | Value: 100 (0x0064)
+reg: 334 | HEX: 0x014E | Value: 584 (0x0248)
+reg: 335 | HEX: 0x014F | Value: 60 (0x003C)
+reg: 336 | HEX: 0x0150 | Value: 120 (0x0078)
+reg: 337 | HEX: 0x0151 | Value: 30 (0x001E)
+reg: 341 | HEX: 0x0155 | Value: 25 (0x0019)
+reg: 342 | HEX: 0x0156 | Value: 95 (0x005F)
+reg: 343 | HEX: 0x0157 | Value: 10 (0x000A)
+reg: 344 | HEX: 0x0158 | Value: 5500 (0x157C)
+reg: 351 | HEX: 0x015F | Value: 100 (0x0064)
+reg: 355 | HEX: 0x0163 | Value: 90 (0x005A)
+reg: 356 | HEX: 0x0164 | Value: 6 (0x0006)
+reg: 404 | HEX: 0x0194 | Value: 3 (0x0003)
+reg: 420 | HEX: 0x01A4 | Value: 1 (0x0001)
+reg: 421 | HEX: 0x01A5 | Value: 120 (0x0078)
+reg: 423 | HEX: 0x01A7 | Value: 1 (0x0001)
+reg: 429 | HEX: 0x01AD | Value: 4 (0x0004)
+reg: 500 | HEX: 0x01F4 | Value: 1024 (0x0400)
+reg: 502 | HEX: 0x01F6 | Value: 1024 (0x0400)
+reg: 504 | HEX: 0x01F8 | Value: 1024 (0x0400)
+
+
+
+
+
+
+reg: 112 | HEX: 0x0070 | Value: 13952 (0x3680)
+reg: 113 | HEX: 0x0071 | Value: 4343 (0x10F7)
+reg: 115 | HEX: 0x0073 | Value: 97 (0x0061)
+reg: 171 | HEX: 0x00AB | Value: 14080 (0x3700)
+reg: 184 | HEX: 0x00B8 | Value: 1 (0x0001)
+reg: 200 | HEX: 0x00C8 | Value: 33536 (0x8300)
+reg: 201 | HEX: 0x00C9 | Value: 3 (0x0003)
+reg: 202 | HEX: 0x00CA | Value: 2489 (0x09B9)
+reg: 203 | HEX: 0x00CB | Value: 5000 (0x1388)
+reg: 205 | HEX: 0x00CD | Value: 2200 (0x0898)
+reg: 206 | HEX: 0x00CE | Value: 84 (0x0054)
+reg: 207 | HEX: 0x00CF | Value: 5000 (0x1388)
+reg: 208 | HEX: 0x00D0 | Value: 1773 (0x06ED)
+reg: 210 | HEX: 0x00D2 | Value: 2197 (0x0895)
+reg: 211 | HEX: 0x00D3 | Value: 74 (0x004A)
+reg: 212 | HEX: 0x00D4 | Value: 5000 (0x1388)
+reg: 213 | HEX: 0x00D5 | Value: 1624 (0x0658)
+reg: 214 | HEX: 0x00D6 | Value: 1606 (0x0646)
+reg: 215 | HEX: 0x00D7 | Value: 579 (0x0243)
+reg: 216 | HEX: 0x00D8 | Value: 65515 (0xFFEB)
+reg: 217 | HEX: 0x00D9 | Value: 65455 (0xFFAF)
+reg: 218 | HEX: 0x00DA | Value: 4189 (0x105D)
+reg: 219 | HEX: 0x00DB | Value: 2202 (0x089A)
+reg: 220 | HEX: 0x00DC | Value: 77 (0x004D)
+reg: 223 | HEX: 0x00DF | Value: 1698 (0x06A2)
+reg: 225 | HEX: 0x00E1 | Value: 26 (0x001A)
+reg: 226 | HEX: 0x00E2 | Value: 22 (0x0016)
+reg: 227 | HEX: 0x00E3 | Value: 25 (0x0019)
+reg: 228 | HEX: 0x00E4 | Value: 25 (0x0019)
+reg: 229 | HEX: 0x00E5 | Value: 100 (0x0064)
+reg: 231 | HEX: 0x00E7 | Value: 97 (0x0061)
+reg: 232 | HEX: 0x00E8 | Value: 65487 (0xFFCF)
+reg: 301 | HEX: 0x012D | Value: 2 (0x0002)
+reg: 302 | HEX: 0x012E | Value: 1 (0x0001)
+reg: 303 | HEX: 0x012F | Value: 3 (0x0003)
+reg: 305 | HEX: 0x0131 | Value: 1 (0x0001)
+reg: 306 | HEX: 0x0132 | Value: 1 (0x0001)
+reg: 308 | HEX: 0x0134 | Value: 1 (0x0001)
+reg: 309 | HEX: 0x0135 | Value: 1 (0x0001)
+reg: 310 | HEX: 0x0136 | Value: 1 (0x0001)
+reg: 320 | HEX: 0x0140 | Value: 2200 (0x0898)
+reg: 321 | HEX: 0x0141 | Value: 5000 (0x1388)
+reg: 322 | HEX: 0x0142 | Value: 2 (0x0002)
+reg: 323 | HEX: 0x0143 | Value: 600 (0x0258)
+reg: 324 | HEX: 0x0144 | Value: 582 (0x0246)
+reg: 325 | HEX: 0x0145 | Value: 580 (0x0244)
+reg: 326 | HEX: 0x0146 | Value: 505 (0x01F9)
+reg: 327 | HEX: 0x0147 | Value: 475 (0x01DB)
+reg: 329 | HEX: 0x0149 | Value: 440 (0x01B8)
+reg: 331 | HEX: 0x014B | Value: 3 (0x0003)
+reg: 332 | HEX: 0x014C | Value: 600 (0x0258)
+reg: 333 | HEX: 0x014D | Value: 100 (0x0064)
+reg: 334 | HEX: 0x014E | Value: 584 (0x0248)
+reg: 335 | HEX: 0x014F | Value: 60 (0x003C)
+reg: 336 | HEX: 0x0150 | Value: 120 (0x0078)
+reg: 337 | HEX: 0x0151 | Value: 30 (0x001E)
+reg: 338 | HEX: 0x0152 | Value: 1 (0x0001)
+reg: 341 | HEX: 0x0155 | Value: 25 (0x0019)
+reg: 342 | HEX: 0x0156 | Value: 95 (0x005F)
+reg: 343 | HEX: 0x0157 | Value: 10 (0x000A)
+reg: 344 | HEX: 0x0158 | Value: 5500 (0x157C)
+reg: 351 | HEX: 0x015F | Value: 100 (0x0064)
+reg: 355 | HEX: 0x0163 | Value: 90 (0x005A)
+reg: 356 | HEX: 0x0164 | Value: 6 (0x0006)
+reg: 404 | HEX: 0x0194 | Value: 3 (0x0003)
+reg: 406 | HEX: 0x0196 | Value: 2 (0x0002)
+reg: 420 | HEX: 0x01A4 | Value: 1 (0x0001)
+reg: 421 | HEX: 0x01A5 | Value: 120 (0x0078)
+reg: 423 | HEX: 0x01A7 | Value: 1 (0x0001)
+reg: 429 | HEX: 0x01AD | Value: 4 (0x0004)
+reg: 500 | HEX: 0x01F4 | Value: 1024 (0x0400)
+reg: 502 | HEX: 0x01F6 | Value: 1024 (0x0400)
+reg: 504 | HEX: 0x01F8 | Value: 1024 (0x0400)

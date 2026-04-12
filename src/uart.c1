@@ -1,0 +1,72 @@
+#include "uart.h"
+
+#define TXD_PIN (GPIO_NUM_17)
+#define RXD_PIN (GPIO_NUM_16)
+#define UART_PORT (UART_NUM_1)
+#define BUF_SIZE (512)
+#define UPDATE_INTERVAL_MS (5000)
+
+static const char *TAG = "UART";
+
+extern QueueHandle_t uart_queue;
+
+void uart_init()
+{
+    uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+
+    ESP_ERROR_CHECK(uart_param_config(UART_PORT, &uart_config));
+
+    ESP_ERROR_CHECK(uart_set_pin(UART_PORT, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+    ESP_ERROR_CHECK(uart_driver_install(UART_PORT, BUF_SIZE, 0, 0, NULL, 0));
+}
+
+void tx_task(void *arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(5000)); // Wait for system to stabilize
+
+    uint8_t command[] = {0x4E, 0x57, 0x00, 0x13, 0x00, 0x00, 0x00, 0x00, 0x06, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0x00, 0x00, 0x01, 0x29};
+
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(UPDATE_INTERVAL_MS));
+        ESP_LOGI(TAG, "Sending command to BMS...");
+        uart_flush_input(UART_PORT);
+        uart_write_bytes(UART_PORT, (const char *)command, sizeof(command));
+    }
+    ESP_LOGI(TAG, "Task finished, deleting...");
+    vTaskDelete(NULL);
+}
+
+void rx_task(void *arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(5000)); // Wait for system to stabilize
+
+    uint8_t *data = (uint8_t *)malloc(BUF_SIZE);
+
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(UPDATE_INTERVAL_MS));
+        int length = uart_read_bytes(UART_PORT, data, BUF_SIZE, pdMS_TO_TICKS(1000));
+
+        if (length > 0)
+        {
+            ESP_LOGI(TAG, "Received %d bytes", length);
+            // ESP_LOG_BUFFER_HEXDUMP("BMS_RESPONSE", data, length, ESP_LOG_INFO);
+            process_bms_package(data, length);
+        }
+        else
+        {
+            ESP_LOGE(TAG, "No data received from BMS");
+        }
+    }
+    free(data);
+    vTaskDelete(NULL);
+}

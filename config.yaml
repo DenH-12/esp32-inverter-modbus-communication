@@ -1,0 +1,647 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+
+mqtt:
+  sensor:
+    # --- Grid Data ---
+    - name: "Grid Voltage"
+      unique_id: inv_grid_v
+      state_topic: "inverter/stats"
+      unit_of_measurement: "V"
+      value_template: "{{ value_json.grid_voltage }}"
+      device_class: "voltage"
+
+    - name: "Grid Frequency"
+      unique_id: inv_grid_freq
+      state_topic: "inverter/stats"
+      unit_of_measurement: "Hz"
+      value_template: "{{ value_json.grid_freq }}"
+      device_class: "frequency"
+
+    - name: "Grid Power"
+      unique_id: inv_grid_p
+      state_topic: "inverter/stats"
+      unit_of_measurement: "W"
+      value_template: "{{ value_json.grid_power }}"
+      device_class: "power"
+      state_class: "measurement"
+
+    # --- Output Data ---
+    - name: "Output Voltage"
+      unique_id: inv_out_v
+      state_topic: "inverter/stats"
+      unit_of_measurement: "V"
+      value_template: "{{ value_json.out_voltage }}"
+      device_class: "voltage"
+
+    - name: "Output Frequency"
+      unique_id: inv_output_freq
+      state_topic: "inverter/stats"
+      unit_of_measurement: "Hz"
+      value_template: "{{ value_json.out_freq }}"
+      device_class: "frequency"
+
+    - name: "Output Power"
+      unique_id: inv_out_p
+      state_topic: "inverter/stats"
+      unit_of_measurement: "W"
+      value_template: "{{ value_json.out_power }}"
+      device_class: "power"
+
+    - name: "Output Current"
+      unique_id: inv_out_a
+      state_topic: "inverter/stats"
+      unit_of_measurement: "A"
+      value_template: "{{ value_json.out_current }}"
+      device_class: "current"
+
+    - name: "Output VA"
+      unique_id: inv_out_va
+      state_topic: "inverter/stats"
+      unit_of_measurement: "VA"
+      value_template: "{{ value_json.out_va }}"
+      device_class: "apparent_power"
+
+    # --- Battery Data ---
+    - name: "Battery Voltage"
+      unique_id: inv_batt_v
+      state_topic: "inverter/stats"
+      unit_of_measurement: "V"
+      value_template: "{{ value_json.batt_voltage }}"
+      device_class: "voltage"
+
+    - name: "Battery Current"
+      unique_id: inv_batt_a
+      state_topic: "inverter/stats"
+      unit_of_measurement: "A"
+      value_template: "{{ value_json.batt_current }}"
+      device_class: "current"
+
+    - name: "Battery Power"
+      unique_id: inv_batt_p
+      state_topic: "inverter/stats"
+      unit_of_measurement: "W"
+      value_template: "{{ value_json.batt_power }}"
+      device_class: "power"
+      state_class: "measurement"
+
+    # --- Solar Data ---
+    - name: "PV Voltage"
+      unique_id: inv_pv_v
+      state_topic: "inverter/stats"
+      unit_of_measurement: "V"
+      value_template: "{{ value_json.pv_voltage }}"
+      device_class: "voltage"
+
+    - name: "PV Current"
+      unique_id: inv_pv_a
+      state_topic: "inverter/stats"
+      unit_of_measurement: "A"
+      value_template: "{{ value_json.pv_current }}"
+      device_class: "current"
+
+    - name: "PV Power"
+      unique_id: inv_pv_p
+      state_topic: "inverter/stats"
+      unit_of_measurement: "W"
+      value_template: "{{ value_json.pv_power }}"
+      device_class: "power"
+      state_class: "measurement"
+
+    - name: "Load Percent"
+      unique_id: inv_load_pct
+      state_topic: "inverter/stats"
+      unit_of_measurement: "%"
+      value_template: "{{ value_json.load_pct }}"
+
+    # --- Temperatures ---
+    - name: "DC Temp"
+      unique_id: inv_temp_dc
+      state_topic: "inverter/stats"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.temp_dc }}"
+      device_class: "temperature"
+
+    - name: "Internal Temp"
+      unique_id: inv_temp_inv
+      state_topic: "inverter/stats"
+      unit_of_measurement: "°C"
+      value_template: "{{ value_json.temp_inv }}"
+      device_class: "temperature"
+
+
+  # ------------------------- Settings -----------------------------
+  button:
+    - name: "Refresh Settings"
+      unique_id: inv_refresh_settings
+      command_topic: "inverter/cmnd/refresh"
+      payload_press: "1"
+
+  # -------------------------- Selects -----------------------------
+  select:
+    - name: "Output Priority"
+      unique_id: inv_set_output_priority
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'UTI', '1': 'SOL', '2': 'SBU', '3': 'SUB', '4': 'SUF'} %}
+        {{ mapper.get(value_json.set_output_priority | string, 'Unknown') }}
+      
+      command_topic: "inverter/cmnd/set_output_priority"
+      command_template: >
+        {% set mapper = {'UTI': '0', 'SOL': '1', 'SBU': '2', 'SUB': '3', 'SUF': '4'} %}
+        {{ mapper.get(value, '0') }}
+      
+      options:
+        - "UTI"
+        - "SOL"
+        - "SBU"
+        - "SUB"
+        - "SUF"
+
+    # --------------------------------------------------------
+    - name: "Input Voltage Range"
+      unique_id: inv_set_input_voltage_range
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Appliances', '1': 'UPS', '2': 'Generator'} %}
+        {{ mapper.get(value_json.set_input_voltage_range | string, 'Unknown') }}
+      
+      command_topic: "inverter/cmnd/set_input_voltage_range"
+      command_template: >
+        {% set mapper = {'Appliances': '0', 'UPS': '1', 'Generator': '2'} %}
+        {{ mapper.get(value, '0') }}
+      
+      options:
+        - "Appliances"
+        - "UPS"
+        - "Generator"
+
+      # --------------------------------------------------------
+    - name: "Buzzer Mode"
+      unique_id: inv_set_buzzer_mode
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Off', '1': 'On', '2': 'Mute when input source changes', '3': 'Alarm Only'} %}
+        {{ mapper.get(value_json.set_buzzer_mode | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_buzzer_mode"
+      command_template: >
+        {% set mapper = {'Off': '0', 'On': '1', 'Mute when input source changes': '2', 'Alarm Only': '3'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Off"
+        - "On"
+        - "Mute when input source changes"
+        - "Alarm Only"
+
+      # --------------------------------------------------------
+    - name: "Beep Source Interrupt"
+      unique_id: inv_set_beep_source_intrpt
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Off', '1': 'On'} %}
+        {{ mapper.get(value_json.set_beep_source_intrpt | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_beep_source_intrpt"
+      command_template: >
+        {% set mapper = {'Off': '0', 'On': '1'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Off"
+        - "On"
+
+      # --------------------------------------------------------
+    - name: "Backlight"
+      unique_id: inv_set_backlight
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Off', '1': 'On'} %}
+        {{ mapper.get(value_json.set_backlight | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_backlight"
+      command_template: >
+        {% set mapper = {'Off': '0', 'On': '1'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Off"
+        - "On"
+
+      # --------------------------------------------------------
+    - name: "Return Default Display"
+      unique_id: inv_set_return_default_display
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Off', '1': 'On'} %}
+        {{ mapper.get(value_json.set_return_default_display | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_return_default_display"
+      command_template: >
+        {% set mapper = {'Off': '0', 'On': '1'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Off"
+        - "On"
+
+      # --------------------------------------------------------
+    - name: "Power Save Mode"
+      unique_id: inv_set_pwr_save_mode
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Off', '1': 'On'} %}
+        {{ mapper.get(value_json.set_pwr_save_mode | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_pwr_save_mode"
+      command_template: >
+        {% set mapper = {'Off': '0', 'On': '1'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Off"
+        - "On"  
+
+      # --------------------------------------------------------
+    - name: "Overload Restart"
+      unique_id: inv_set_overload_restart
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Off', '1': 'On'} %}
+        {{ mapper.get(value_json.set_overload_restart | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_overload_restart"
+      command_template: >
+        {% set mapper = {'Off': '0', 'On': '1'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Off"
+        - "On"
+
+      # --------------------------------------------------------
+    - name: "Overtemp Restart"
+      unique_id: inv_set_overtemp_restart
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Off', '1': 'On'} %}
+        {{ mapper.get(value_json.set_overtemp_restart | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_overtemp_restart"
+      command_template: > 
+        {% set mapper = {'Off': '0', 'On': '1'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Off"
+        - "On"
+
+      # --------------------------------------------------------
+    - name: "Overload Bypass"
+      unique_id: inv_set_overload_bypass
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Off', '1': 'On'} %}
+        {{ mapper.get(value_json.set_overload_bypass | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_overload_bypass"
+      command_template: > 
+        {% set mapper = {'Off': '0', 'On': '1'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Off"
+        - "On"
+
+      # --------------------------------------------------------
+    - name: "Output Voltage"
+      unique_id: inv_set_output_voltage
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_out_voltage | string + 'Vac' }}"
+      command_topic: "inverter/cmnd/set_out_voltage"
+      command_template: "{{ value.replace('Vac', '') }}"
+      options:
+        - "220Vac"
+        - "230Vac"
+        - "240Vac"
+
+      # --------------------------------------------------------
+    - name: "Output Frequency"
+      unique_id: inv_set_output_frequency
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_out_frequency | string + 'Hz' }}"
+      command_topic: "inverter/cmnd/set_out_frequency"
+      command_template: "{{ value.replace('Hz', '') }}"
+      options:
+        - "50Hz"
+        - "60Hz"
+
+      # --------------------------------------------------------
+    - name: "Battery Type"
+      unique_id: inv_set_battery_type
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'AGM', '1': 'Flooded', '2': 'User', '3': 'Li1', '4': 'Li2', '5': 'Li3', '6': 'Li4'} %}
+        {{ mapper.get(value_json.set_batt_type | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_batt_type"
+      command_template: > 
+        {% set mapper = {'AGM': '0', 'Flooded': '1', 'User': '2', 'Li1': '3', 'Li2': '4', 'Li3': '5', 'Li4': '6'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "AGM"
+        - "Flooded"
+        - "User"
+        - "Li1"
+        - "Li2"
+        - "Li3"
+        - "Li4"
+
+      # --------------------------------------------------------
+    - name: "Battery Charge Priority"
+      unique_id: inv_set_batt_chg_priority
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Utility First', '1': 'Solar First', '2': 'Solar&Utility', '3': 'Solar Only'} %}
+        {{ mapper.get(value_json.set_batt_chg_priority | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_batt_chg_priority"
+      command_template: > 
+        {% set mapper = {'Utility First': '0', 'Solar First': '1', 'Solar&Utility': '2', 'Solar Only': '3'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Utility First"
+        - "Solar First"
+        - "Solar&Utility"
+        - "Solar Only"
+
+    # --------------------------------------------------------
+    - name: "Battery Equalization Mode"
+      unique_id: inv_set_batt_eq_mode
+      state_topic: "inverter/settings"
+      value_template: >
+        {% set mapper = {'0': 'Off', '1': 'On'} %}
+        {{ mapper.get(value_json.set_batt_eq_mode | string, 'Unknown') }}
+      command_topic: "inverter/cmnd/set_batt_eq_mode"
+      command_template: >
+        {% set mapper = {'Off': '0', 'On': '1'} %}
+        {{ mapper.get(value, '0') }}
+      options:
+        - "Off"
+        - "On"
+
+
+  # -------------------------- Numbers -----------------------------
+  number:
+    - name: "High DC Protection Voltage"
+      unique_id: inv_set_batt_dc_protect_voltage
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_dc_protect_voltage }}"
+      command_topic: "inverter/cmnd/set_batt_dc_protect_voltage"
+      min: 50
+      max: 70
+      step: 0.1
+      unit_of_measurement: "V"
+
+    # --------------------------------------------------------
+    - name: "Battery Bulk Voltage"
+      unique_id: inv_set_batt_bulk_voltage
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_bulk_voltage }}"
+      command_topic: "inverter/cmnd/set_batt_bulk_voltage"
+      min: 48
+      max: 62
+      step: 0.1
+      unit_of_measurement: "V"
+      command_template: >
+        {% set min_allowed = states('sensor.inv_set_batt_float_voltage') | float(56.4) %}
+        {% if value | float >= min_allowed %}
+          {{ value }}
+        {% else %}
+          {{ min_allowed }}
+        {% endif %}
+
+    # --------------------------------------------------------
+    - name: "Battery Float Voltage"
+      unique_id: inv_set_batt_float_voltage
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_float_voltage }}"
+      command_topic: "inverter/cmnd/set_batt_float_voltage"
+      min: 40
+      max: 62
+      step: 0.1
+      unit_of_measurement: "V"
+      command_template: >
+        {% set max_allowed = states('sensor.inv_set_batt_bulk_voltage') | float(54.0) %}
+        {% if value | float <= max_allowed %}
+          {{ value }}
+        {% else %}
+          {{ max_allowed }}
+        {% endif %}
+
+      # --------------------------------------------------------
+    - name: "Battery Recovery Voltage"
+      unique_id: inv_set_batt_recovery_voltage
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_recovery_voltage }}"
+      command_topic: "inverter/cmnd/set_batt_recovery_voltage"
+      min: 48
+      max: 62
+      step: 0.1
+      unit_of_measurement: "V"
+      command_template: >
+        {% set priority = states('select.inv_set_output_priority') %}
+        {% set max_allowed = states('number.inv_set_batt_bulk_voltage') | float(62.0) %}
+        {% set min_allowed = states('number.inv_set_batt_protection_voltage') | float(48.0) %}
+        {% if (priority == 'SBU' or priority == 'SOL') and (min_allowed < value | float < (max_allowed - 0.4)) %}
+          {{ value }}
+        {% else %}
+          {{ states('number.inv_set_batt_recovery_voltage') }}
+        {% endif %}
+
+    # --------------------------------------------------------
+    - name: "Battery Protection Voltage"
+      unique_id: inv_set_batt_protection_voltage
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_protection_voltage }}"
+      command_topic: "inverter/cmnd/set_batt_protection_voltage"
+      min: 44
+      max: 57.2
+      step: 0.1
+      unit_of_measurement: "V"
+      command_template: >
+        {% set priority = states('select.inv_set_output_priority') %}
+        {% set max_allowed = states('number.inv_set_batt_recovery_voltage') | float(62.0) %}
+        {% if (priority == 'SBU' or priority == 'SOL') and (value | float < max_allowed) %}
+          {{ value }}
+        {% else %}
+          {{ states('number.inv_set_batt_protection_voltage') }}
+        {% endif %}
+
+      # --------------------------------------------------------
+    - name: "Battery Cutoff Voltage"
+      unique_id: inv_set_batt_cutoff_voltage
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_cutoff_voltage }}"
+      command_topic: "inverter/cmnd/set_batt_cutoff_voltage"
+      min: 40
+      max: 54
+      step: 0.1
+      unit_of_measurement: "V"
+      command_template: >
+        {% set max_allowed = states('number.inv_set_batt_protection_voltage') | float(57.2) %}
+        {% if value | float < max_allowed %}
+          {{ value }}
+        {% else %}
+          {{ max_allowed }}
+        {% endif %}
+
+    # --------------------------------------------------------  
+    - name: "Battery CV/Float Time"
+      unique_id: inv_set_batt_cv_float_time
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_cv_float_time }}"
+      command_topic: "inverter/cmnd/set_batt_cv_float_time"
+      min: 0    # 0 means auto
+      max: 900
+      step: 1
+      unit_of_measurement: "min"
+
+      # --------------------------------------------------------
+    - name: "Battery Max Charge Current"
+      unique_id: inv_set_max_chg
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_max_chg_a }}"
+      command_topic: "inverter/cmnd/set_batt_max_chg_a"
+      min: 10
+      max: 120
+      step: 1
+      unit_of_measurement: "A"
+
+    # --------------------------------------------------------
+    - name: "Battery Max AC Charge Current"
+      unique_id: inv_set_batt_max_ac_chg_current
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_max_ac_chg_current }}"
+      command_topic: "inverter/cmnd/set_batt_max_ac_chg_current"
+      min: 10
+      max: 120
+      step: 1
+      unit_of_measurement: "A"
+
+    # --------------------------------------------------------
+    - name: "Battery Equalization Charge Voltage"
+      unique_id: inv_set_batt_eq_chg_voltage
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_eq_chg_voltage }}"
+      command_topic: "inverter/cmnd/set_batt_eq_chg_voltage"
+      min: 48
+      max: 64
+      step: 0.1
+      unit_of_measurement: "V"
+
+    # --------------------------------------------------------
+    - name: "Battery Equalization Charge Time"
+      unique_id: inv_set_batt_eq_chg_time
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_eq_chg_time }}"
+      command_topic: "inverter/cmnd/set_batt_eq_chg_time"
+      min: 0
+      max: 900
+      step: 1
+      unit_of_measurement: "min"
+
+    # --------------------------------------------------------
+    - name: "Battery Equalization Timeout"
+      unique_id: inv_set_batt_eq_timeout
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_eq_timeout }}"
+      command_topic: "inverter/cmnd/set_batt_eq_timeout"
+      min: 0
+      max: 900
+      step: 1
+      unit_of_measurement: "min"
+
+    # --------------------------------------------------------
+    - name: "Battery Equalization Interval"
+      unique_id: inv_set_batt_eq_interval
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_eq_interval }}"
+      command_topic: "inverter/cmnd/set_batt_eq_interval"
+      min: 1
+      max: 90
+      step: 1
+      unit_of_measurement: "day"
+      
+      # --------------------------------------------------------
+    - name: "Battery Protection SOC"
+      unique_id: inv_set_batt_protection_soc
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_protection_soc }}"
+      command_topic: "inverter/cmnd/set_batt_protection_soc"
+      min: 5
+      max: 50
+      step: 1
+      unit_of_measurement: "%"
+
+    # --------------------------------------------------------
+    - name: "Battery Recovery SOC"
+      unique_id: inv_set_batt_recovery_soc
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_recovery_soc }}"
+      command_topic: "inverter/cmnd/set_batt_recovery_soc"
+      min: 60
+      max: 100
+      step: 1
+      unit_of_measurement: "%"
+
+    # --------------------------------------------------------
+    - name: "Battery Cut-Off SOC"
+      unique_id: inv_set_batt_cut_off_soc
+      state_topic: "inverter/settings"
+      value_template: "{{ value_json.set_batt_cut_off_soc }}"
+      command_topic: "inverter/cmnd/set_batt_cut_off_soc"
+      min: 3
+      max: 30
+      step: 1
+      unit_of_measurement: "%"
+
+template:
+  - sensor:
+      # Battery power is positive when charging, negative when discharging. These two sensors split it into separate charge and discharge values for easier use in Home Assistant.
+      - name: "Battery Charge Power"
+        unit_of_measurement: "W"
+        device_class: power
+        state: "{{ max(0, states('sensor.battery_power') | float(0)) }}"
+      
+      - name: "Battery Discharge Power"
+        unit_of_measurement: "W"
+        device_class: power
+        state: "{{ max(0, 0 - states('sensor.battery_power') | float(0)) }}"
+
+      - name: "Grid Import Power"
+        unit_of_measurement: "W"
+        device_class: power
+        state: "{{ max(0, states('sensor.grid_power') | float(0)) }}"
+
+sensor:
+  - platform: integration
+    source: sensor.pv_power
+    name: "Total PV Energy"
+    unique_id: inv_pv_energy_total
+    unit_prefix: k
+    round: 2
+    method: left
+
+  - platform: integration
+    source: sensor.battery_charge_power
+    unique_id: inv_batt_charge_energy_total
+    name: "Energy Battery Charge Total"
+    unit_prefix: k
+    method: left
+
+  - platform: integration
+    source: sensor.battery_discharge_power
+    unique_id: inv_batt_discharge_energy_total
+    name: "Energy Battery Discharge Total"
+    unit_prefix: k
+    method: left
+
+  - platform: integration
+    source: sensor.grid_import_power
+    unique_id: inv_grid_import_energy_total
+    name: "Energy Grid Import Total"
+    unit_prefix: k
+    method: left

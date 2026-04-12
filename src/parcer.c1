@@ -1,0 +1,152 @@
+#include "parcer.h"
+
+void process_bms_package(uint8_t *data, int len)
+{
+    if (!mqtt_connected)
+    {
+        ESP_LOGW("PARCER", "MQTT not connected, skipping BMS data processing");
+        return;
+    }
+
+    if (data[0] != 0x4E || data[1] != 0x57)
+        return;
+
+    int i = 11;
+
+    float total_current;
+    float total_voltage;
+    float total_power;
+
+    while (i < len)
+    {
+        uint8_t id = data[i];
+        i++;
+
+        switch (id)
+        {
+        // Cells voltages
+        case 0x79:
+        {
+            int num_cells = data[i] / 3;
+            i++;
+            for (int c = 0; c < num_cells; c++)
+            {
+                uint8_t cell_id = data[i];
+                uint16_t cell_mv = (data[i + 1] << 8) | data[i + 2];
+                float cell_v = cell_mv * 0.001f;
+
+                char name[16];
+                snprintf(name, sizeof(name), "cell_%d", cell_id);
+
+                printf("Cell %d: %.3f V\n", cell_id, cell_v);
+                mqtt_publish_sensor(name, cell_v, "V");
+
+                i += 3;
+            }
+            i -= 4;
+
+            break;
+        }
+
+        // Temperatures
+        case 0x80:
+        case 0x81:
+        case 0x82:
+        {
+            int16_t temp = (data[i] << 8) | data[i + 1];
+
+            char name[16];
+            snprintf(name, sizeof(name), "temp_%02X", id);
+
+            printf("Temp (ID 0x%02X): %.1f °C\n", id, temp);
+            mqtt_publish_sensor(name, (float)temp, "°C");
+
+            i += 2;
+            break;
+        }
+
+        // Total voltage
+        case 0x83:
+        {
+            uint16_t total_mv = (data[i] << 8) | data[i + 1];
+            total_voltage = total_mv * 0.01f;
+
+            printf("Total voltage: %.2f V\n", total_voltage);
+            mqtt_publish_sensor("total_voltage", total_voltage, "V");
+
+            i += 2;
+            break;
+        }
+
+        // Current
+        case 0x84:
+        {
+            int16_t raw_current = (data[i] << 8) | data[i + 1];
+
+            // Перевіряємо найвищий біт (0x8000 або 32768)
+            if (raw_current & 0x8000)
+            {
+                // Якщо 1 — це заряд (Charging), робимо значення додатнім
+                // Використовуємо & 0x7FFF, щоб прибрати біт напрямку
+                total_current = (raw_current & 0x7FFF) * 0.01;
+            }
+            else
+            {
+                // Якщо 0 — це розряд (Discharge), робимо значення від'ємним
+                total_current = raw_current * -0.01;
+            }
+
+            printf("Current: %.2f A\n", total_current);
+            mqtt_publish_sensor("total_current", total_current, "A");
+            i += 2;
+            break;
+        }
+
+        // State of Charge
+        case 0x85:
+        {
+            printf("SOC: %d%%\n", data[i]);
+            mqtt_publish_sensor("soc", data[i], "%");
+            i += 1;
+            break;
+        }
+
+        // Number of temperature sensors
+        case 0x86:
+        {
+            printf("Sensors (temp): %d\n", data[i]);
+            i += 1;
+            break;
+        }
+
+        // Cycle count
+        case 0x87:
+        {
+            uint16_t cycle_count = (data[i] << 8) | data[i + 1];
+            printf("Cycle count: %2d\n", cycle_count);
+            mqtt_publish_sensor("cycle_count", (float)cycle_count, "cycles");
+
+            i += 2;
+            break;
+        }
+
+        // Total capacity
+        case 0x89:
+        {
+            uint32_t cycle_count = (data[i] << 24) | (data[i + 1] << 16) | (data[i + 2] << 8) | data[i + 3];
+            printf("Total capacity: %4d Ah\n", cycle_count);
+            mqtt_publish_sensor("total_capacity", (float)cycle_count, "Ah");
+
+            i += 4;
+            break;
+        }
+
+        default:
+            i++;
+            break;
+        }
+    }
+    total_power = total_voltage * total_current;
+    printf("Total power: %.2f W\n", total_power);
+    mqtt_publish_sensor("total_power", total_power, "W");
+}

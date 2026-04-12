@@ -1,0 +1,160 @@
+#include "pylontech.h"
+
+static const char *TAG = "PYLON";
+
+pylon_params_t my_bms_limits = {
+    .voltage_limit = 58000,     // 58.0V
+    .discharge_limit = 40000,   // 40.0V
+    .charge_current = 10000,    // 100.0A
+    .discharge_current = 10000, // 100.0A
+    .status = 0x0000};
+
+void pylon_init()
+{
+    uart_config_t rs485_config = {
+        .baud_rate = RS485_BAUD_RATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+
+    ESP_ERROR_CHECK(uart_param_config(RS485_PORT_NUM, &rs485_config));
+
+    ESP_ERROR_CHECK(uart_set_pin(RS485_PORT_NUM, RS485_TX_PIN, RS485_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+    ESP_ERROR_CHECK(uart_driver_install(RS485_PORT_NUM, RS485_BUF_SIZE, 0, 0, NULL, 0));
+}
+
+void sniffer_task(void *arg)
+{
+    // Delay to allow logging to settle
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    uint8_t *data = (uint8_t *)malloc(RS485_BUF_SIZE);
+    ESP_LOGI(TAG, "Sniffer started. Listening to Inverter on 9600 baud...");
+
+    char addr[3] = "02";
+
+    uint16_t cs = calculate_pylon_checksum("200246630000");
+    ESP_LOGI(TAG, "Test checksum for 200246630000: %04X", cs);
+
+    while (1)
+    {
+        int len = uart_read_bytes(RS485_PORT_NUM, data, RS485_BUF_SIZE, 100 / portTICK_PERIOD_MS);
+
+        if (len > 0)
+        {
+            char cid2_str[3] = {data[7], data[8], 0};
+            char adr_str[3] = {data[3], data[4], 0};
+
+            printf("Received %d bytes: ", len);
+
+            // Print received data in hex and ASCII
+            for (int i = 0; i < len; i++)
+            {
+                if (data[i] >= 32 && data[i] <= 126)
+                {
+                    putchar(data[i]);
+                }
+                else
+                {
+                    printf("[%02X]", data[i]);
+                }
+            }
+            printf("\n");
+
+            // Check if address matches
+            if (strcmp(adr_str, addr) == 0)
+            {
+                // Check for 61 request
+                if (strcmp(cid2_str, "61") == 0)
+                {
+                    send_pylon_response_61(&my_bms_limits, adr_str);
+                }
+                // Check for 63 request
+                else if (strcmp(cid2_str, "63") == 0)
+                {
+                    send_pylon_response_63(adr_str);
+                }
+                // Check for 42 request
+                else if (strcmp(cid2_str, "42") == 0)
+                {
+                    ESP_LOGW(TAG, "!!! INVERTER ASKED FOR DATA (42) ON ADR %s !!!", adr_str);
+                    int msg = 1;
+                    xQueueSend(btn_queue, &msg, 0);
+                }
+            }
+        }
+        vTaskDelay(5 / portTICK_PERIOD_MS);
+    }
+    free(data);
+}
+
+uint16_t calculate_pylon_checksum(const char *data) {
+    uint32_t sum = 0;
+    while (*data) {
+        sum += (uint8_t)(*data);
+        data++;
+    }
+    
+    uint16_t check = ~((uint16_t)(sum & 0xFFFF)) + 1;
+    return check;
+}
+
+void send_pylon_response_61(pylon_params_t *params, char *adr_str)
+{
+    char data_str[21];
+    char frame[64];
+    char final_packet[128];
+
+    snprintf(data_str, sizeof(data_str), "%04X%04X%04X%04X%04X",
+             params->voltage_limit,
+             params->discharge_limit,
+             params->charge_current,
+             params->discharge_current,
+             params->status);
+
+    char length[5];
+    make_length(length, strlen(data_str) / 2);
+
+    snprintf(frame, sizeof(frame), "20%s4600%s%s", adr_str, length, data_str);
+
+    uint16_t cs = calculate_pylon_checksum(frame);
+
+    snprintf(final_packet, sizeof(final_packet), "~%s%04X\r", frame, cs);
+    // Add small delay before sending
+    vTaskDelay(pdMS_TO_TICKS(2));
+    uart_write_bytes(RS485_PORT_NUM, final_packet, strlen(final_packet));
+    ESP_LOGI(TAG, "Sent response to 61: %s", final_packet);
+}
+
+void send_pylon_response_63(char *adr_str)
+{
+    char data_str[] = "C7382EE00001"; // C738 = 51000mV, 2EE0 = 12000 (120Ah)
+    char frame[64];
+    char final_packet[128];
+
+    char length[5];
+    make_length(length, strlen(data_str) / 2);
+
+    snprintf(frame, sizeof(frame), "20%s4600%s%s", adr_str, length, data_str);
+
+    uint16_t cs = calculate_pylon_checksum(frame);
+    snprintf(final_packet, sizeof(final_packet), "~%s%04X\r", frame, cs);
+    // Add small delay before sending
+    vTaskDelay(pdMS_TO_TICKS(2));
+    uart_write_bytes(RS485_PORT_NUM, final_packet, strlen(final_packet));
+    ESP_LOGI(TAG, "Sent response to 63: %s", final_packet);
+}
+
+void make_length(char *out, int len)
+{
+    int n1 = (len >> 8) & 0xF;
+    int n2 = (len >> 4) & 0xF;
+    int n3 = len & 0xF;
+    int sum = n1 + n2 + n3;
+    int lchk = ((~sum) & 0xF) + 1;
+    sprintf(out, "%1X%03X", lchk, len);
+}
