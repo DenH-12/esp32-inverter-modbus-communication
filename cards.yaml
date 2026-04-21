@@ -1,0 +1,119 @@
+type: vertical-stack
+cards:
+  - type: button
+    entity: button.inverter_settings
+    name: Refresh
+    tap_action:
+      action: toggle
+    color: green
+    icon_height: 30px
+  - type: entities
+    entities:
+      - entity: number.battery_bulk_voltage
+        name: Bulk Voltage
+        secondary_info: state
+        icon: mdi:battery
+      - entity: number.battery_float_voltage
+        name: Float Voltage
+        secondary_info: state
+        icon: mdi:battery
+      - entity: number.battery_recovery_voltage
+        name: Recovery Voltage
+        secondary_info: state
+        icon: mdi:battery-charging
+      - entity: number.battery_protection_voltage
+        name: Protection Voltage
+        secondary_info: state
+        icon: mdi:battery-alert
+      - entity: number.battery_cutoff_voltage
+        name: Cutoff Voltage
+        secondary_info: state
+        icon: mdi:battery-alert
+      - entity: number.battery_cv_float_time
+        name: CV/Float Time
+        secondary_info: state
+        icon: mdi:timer
+      - entity: number.inverter_max_charge_current
+        name: Max. charge current
+        secondary_info: state
+        icon: mdi:current-ac
+      - entity: number.battery_max_ac_charge_current
+        name: Max. AC charge current
+        secondary_info: state
+        icon: mdi:current-ac
+      - entity: number.battery_equalization_charge_voltage
+        name: Equalization Charge Voltage
+        secondary_info: state
+        icon: mdi:battery
+      - entity: number.battery_equalization_charge_time
+        name: Equalization Charge Time
+        secondary_info: state
+        icon: mdi:timer
+      - entity: number.battery_equalization_timeout
+        name: Equalization Timeout
+        secondary_info: state
+        icon: mdi:timer-off
+      - entity: number.battery_equalization_interval
+        name: Equalization Interval
+        secondary_info: state
+        icon: mdi:timer-sand
+      - entity: number.battery_recovery_soc
+        name: Recovery SOC
+        secondary_info: state
+        icon: mdi:battery-charging
+      - entity: number.battery_protection_soc
+        name: Protection SOC
+        secondary_info: state
+        icon: mdi:battery-alert
+      - entity: number.battery_cut_off_soc
+        name: Cutoff SOC
+        secondary_info: state
+        icon: mdi:battery-alert
+
+type: vertical-stack
+cards:
+  - type: entities
+    entities:
+      - entity: select.output_priority
+        name: Output Priority
+        icon: mdi:format-list-bulleted
+      - entity: select.input_voltage_range
+        name: Input Voltage Range
+        icon: mdi:power-plug
+      - entity: select.buzzer_mode
+        name: Buzzer Mode
+        icon: mdi:volume-high
+      - entity: select.beep_source_interrupt
+        name: Beep Source Interrupt
+        icon: mdi:volume-high
+      - entity: select.backlight
+        name: Backlight
+        icon: mdi:lightbulb
+      - entity: select.return_default_display
+        name: Return Default Display
+        icon: mdi:home-automation
+      - entity: select.pwr_save_mode
+        name: Power Save Mode
+        icon: mdi:power-sleep
+      - entity: select.overload_restart
+        name: Overload Restart
+        icon: mdi:restart
+      - entity: select.overtemp_restart
+        name: Overtemp Restart
+        icon: mdi:restart
+      - entity: select.overload_bypass
+        name: Overload Bypass
+        icon: mdi:restart
+      - entity: select.output_voltage
+        name: Output Voltage
+        icon: mdi:flash
+      - entity: select.output_frequency
+        name: Output Frequency
+        icon: mdi:flash
+      - entity: select.battery_type
+        name: Battery Type
+        icon: mdi:battery
+      - entity: select.battery_charge_priority
+        name: Battery Charge Priority
+        icon: mdi:battery-charging
+          

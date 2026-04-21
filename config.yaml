@@ -9,7 +9,6 @@ automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
 
-
 mqtt:
   sensor:
     # --- Grid Data ---
@@ -137,7 +136,6 @@ mqtt:
       unit_of_measurement: "°C"
       value_template: "{{ value_json.temp_inv }}"
       device_class: "temperature"
-
 
   # ------------------------- Settings -----------------------------
   button:
@@ -394,6 +392,7 @@ mqtt:
       max: 70
       step: 0.1
       unit_of_measurement: "V"
+      mode: box
 
     # --------------------------------------------------------
     - name: "Battery Bulk Voltage"
@@ -405,8 +404,9 @@ mqtt:
       max: 62
       step: 0.1
       unit_of_measurement: "V"
+      mode: box
       command_template: >
-        {% set min_allowed = states('sensor.inv_set_batt_float_voltage') | float(56.4) %}
+        {% set min_allowed = states('number.battery_float_voltage') | float %}
         {% if value | float >= min_allowed %}
           {{ value }}
         {% else %}
@@ -423,8 +423,9 @@ mqtt:
       max: 62
       step: 0.1
       unit_of_measurement: "V"
+      mode: box
       command_template: >
-        {% set max_allowed = states('sensor.inv_set_batt_bulk_voltage') | float(54.0) %}
+        {% set max_allowed = states('number.battery_bulk_voltage') | float %}
         {% if value | float <= max_allowed %}
           {{ value }}
         {% else %}
@@ -437,18 +438,19 @@ mqtt:
       state_topic: "inverter/settings"
       value_template: "{{ value_json.set_batt_recovery_voltage }}"
       command_topic: "inverter/cmnd/set_batt_recovery_voltage"
-      min: 48
+      min: 40
       max: 62
       step: 0.1
       unit_of_measurement: "V"
+      mode: box
       command_template: >
-        {% set priority = states('select.inv_set_output_priority') %}
-        {% set max_allowed = states('number.inv_set_batt_bulk_voltage') | float(62.0) %}
-        {% set min_allowed = states('number.inv_set_batt_protection_voltage') | float(48.0) %}
-        {% if (priority == 'SBU' or priority == 'SOL') and (min_allowed < value | float < (max_allowed - 0.4)) %}
+        {% set priority = states('select.output_priority') %}
+        {% set max_allowed = states('number.battery_bulk_voltage') | float %}
+        {% set min_allowed = states('number.battery_protection_voltage') | float %}
+        {% if (priority == 'SBU' or priority == 'SOL') and (min_allowed < (value | float) < (max_allowed - 0.4)) %}
           {{ value }}
         {% else %}
-          {{ states('number.inv_set_batt_recovery_voltage') }}
+          {{ states('number.battery_recovery_voltage') }}
         {% endif %}
 
     # --------------------------------------------------------
@@ -461,13 +463,14 @@ mqtt:
       max: 57.2
       step: 0.1
       unit_of_measurement: "V"
+      mode: box
       command_template: >
-        {% set priority = states('select.inv_set_output_priority') %}
-        {% set max_allowed = states('number.inv_set_batt_recovery_voltage') | float(62.0) %}
-        {% if (priority == 'SBU' or priority == 'SOL') and (value | float < max_allowed) %}
+        {% set priority = states('select.output_priority') %}
+        {% set max_allowed = states('number.battery_recovery_voltage') | float %}
+        {% if (priority == 'SBU') %}
           {{ value }}
         {% else %}
-          {{ states('number.inv_set_batt_protection_voltage') }}
+          {{ states('number.battery_protection_voltage') }}
         {% endif %}
 
       # --------------------------------------------------------
@@ -480,12 +483,13 @@ mqtt:
       max: 54
       step: 0.1
       unit_of_measurement: "V"
+      mode: box
       command_template: >
-        {% set max_allowed = states('number.inv_set_batt_protection_voltage') | float(57.2) %}
+        {% set max_allowed = states('number.battery_protection_voltage') | float %}
         {% if value | float < max_allowed %}
           {{ value }}
         {% else %}
-          {{ max_allowed }}
+          {{ max_allowed - 0.1 }}
         {% endif %}
 
     # --------------------------------------------------------  
@@ -498,6 +502,7 @@ mqtt:
       max: 900
       step: 1
       unit_of_measurement: "min"
+      mode: box
 
       # --------------------------------------------------------
     - name: "Battery Max Charge Current"
@@ -509,6 +514,7 @@ mqtt:
       max: 120
       step: 1
       unit_of_measurement: "A"
+      mode: box
 
     # --------------------------------------------------------
     - name: "Battery Max AC Charge Current"
@@ -520,6 +526,7 @@ mqtt:
       max: 120
       step: 1
       unit_of_measurement: "A"
+      mode: box
 
     # --------------------------------------------------------
     - name: "Battery Equalization Charge Voltage"
@@ -531,6 +538,7 @@ mqtt:
       max: 64
       step: 0.1
       unit_of_measurement: "V"
+      mode: box
 
     # --------------------------------------------------------
     - name: "Battery Equalization Charge Time"
@@ -542,6 +550,7 @@ mqtt:
       max: 900
       step: 1
       unit_of_measurement: "min"
+      mode: box
 
     # --------------------------------------------------------
     - name: "Battery Equalization Timeout"
@@ -553,6 +562,7 @@ mqtt:
       max: 900
       step: 1
       unit_of_measurement: "min"
+      mode: box
 
     # --------------------------------------------------------
     - name: "Battery Equalization Interval"
@@ -564,6 +574,7 @@ mqtt:
       max: 90
       step: 1
       unit_of_measurement: "day"
+      mode: box
       
       # --------------------------------------------------------
     - name: "Battery Protection SOC"
@@ -575,6 +586,7 @@ mqtt:
       max: 50
       step: 1
       unit_of_measurement: "%"
+      mode: box
 
     # --------------------------------------------------------
     - name: "Battery Recovery SOC"
@@ -586,6 +598,7 @@ mqtt:
       max: 100
       step: 1
       unit_of_measurement: "%"
+      mode: box
 
     # --------------------------------------------------------
     - name: "Battery Cut-Off SOC"
@@ -597,6 +610,7 @@ mqtt:
       max: 30
       step: 1
       unit_of_measurement: "%"
+      mode: box
 
 template:
   - sensor:
@@ -615,6 +629,21 @@ template:
         unit_of_measurement: "W"
         device_class: power
         state: "{{ max(0, states('sensor.grid_power') | float(0)) }}"
+
+      - name: "Battery Charge Percent"
+        unit_of_measurement: "%"
+        device_class: battery
+        state: >
+          {% set voltage = states('sensor.battery_voltage') | float(0) %}
+          {% set bulk = states('number.inv_set_batt_bulk_voltage') | float(58.0) %}
+          {% set cutoff = states('number.inv_set_batt_cutoff_voltage') | float(45.0) %}
+          {% if voltage <= cutoff %}
+            0
+          {% elif voltage >= bulk %}
+            100
+          {% else %}
+            {{ ((voltage - cutoff) / (bulk - cutoff) * 100) | int }}
+          {% endif %}
 
 sensor:
   - platform: integration
