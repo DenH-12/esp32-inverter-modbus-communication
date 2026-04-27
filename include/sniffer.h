@@ -99,6 +99,10 @@ extern EventGroupHandle_t inverter_event_group;
 extern const reg_metadata_t inv_settings_map[];
 extern QueueHandle_t inv_cmd_queue;
 extern const size_t inv_settings_map_len;
+extern uint64_t uptime_seconds;
+extern esp_reset_reason_t last_reset_reason;
+extern size_t free_heap;
+extern size_t min_heap_free;
 
 void sniffer_init();
 
@@ -112,3 +116,4 @@ uint16_t crc16_modbus(const uint8_t *data, uint16_t len);
 esp_err_t send_modbus_request(uint16_t start_addr, uint16_t count);
 void parse_inverter_data(uint16_t start_addr, uint8_t *data);
 void inverter_read_block(const modbus_block_t *block);
+void update_system_status();

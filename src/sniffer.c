@@ -5,6 +5,8 @@ static const char *TAG = "INVERTER";
 
 EventGroupHandle_t inverter_event_group;
 QueueHandle_t inv_cmd_queue;
+size_t free_heap;
+size_t min_heap_free;
 
 // Add blocks you want to read here
 static const modbus_block_t blocks_to_read[] = {
@@ -90,6 +92,49 @@ void sniffer_init()
     inv_cmd_queue = xQueueCreate(10, sizeof(inv_cmd_t));
 }
 
+void inverter_read_task(void *pvParameters)
+{
+    const modbus_block_t settings_block = {300, 51, "SETTINGS_DATA"};
+    inv_cmd_t cmd;
+
+    while (1)
+    {
+        update_system_status();
+
+        // Check MQTT connection before reading
+        if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED))
+        {
+            ESP_LOGW(TAG, "MQTT not connected, skipping read cycle wait 5 seconds...");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            continue;
+        }
+        // Check if there are any pending commands to write before reading
+        else if (xQueueReceive(inv_cmd_queue, &cmd, 0) == pdPASS)
+        {
+            inverter_write_register(cmd.reg, cmd.value);
+            xEventGroupSetBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS); // Trigger a settings refresh after writing
+            vTaskDelay(pdMS_TO_TICKS(100));                                       // Short delay after write before next action
+        }
+
+        for (int i = 0; i < sizeof(blocks_to_read) / sizeof(modbus_block_t); i++)
+        {
+            if (xEventGroupGetBits(inverter_event_group) & INV_EVENT_REFRESH_SETTINGS)
+            {
+                inverter_read_block(&settings_block);
+
+                xEventGroupClearBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS);
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
+
+            inverter_read_block(&blocks_to_read[i]);
+
+            vTaskDelay(pdMS_TO_TICKS(100)); // Short delay between block reads
+        }
+        vTaskDelay(pdMS_TO_TICKS(SNIFFER_READ_INTERVAL_MS)); // Delay before next full read cycle
+    }
+}
+
+
 void parse_inverter_data(uint16_t start_addr, uint8_t *data)
 {
     if (start_addr == 200)
@@ -124,7 +169,7 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
             }
             strncat(json_string, "}", sizeof(json_string) - strlen(json_string) - 1); // End JSON
 
-            mqtt_publish_readings(MQTT_REALTIME_TOPIC, json_string);
+            mqtt_publish_topic(MQTT_REALTIME_TOPIC, json_string);
         }
     }
     else if (start_addr == 300)
@@ -159,46 +204,8 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
             }
             strncat(json_string, "}", sizeof(json_string) - strlen(json_string) - 1); // End JSON
 
-            mqtt_publish_readings(MQTT_SETTINGS_TOPIC, json_string);
+            mqtt_publish_topic(MQTT_SETTINGS_TOPIC, json_string);
         }
-    }
-}
-
-void inverter_read_task(void *pvParameters)
-{
-    const modbus_block_t settings_block = {300, 51, "SETTINGS_DATA"};
-    inv_cmd_t cmd;
-
-    while (1)
-    {
-        if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED))
-        {
-            ESP_LOGW(TAG, "MQTT not connected, skipping read cycle wait 5 seconds...");
-            vTaskDelay(pdMS_TO_TICKS(5000));
-            continue;
-        }
-        else if (xQueueReceive(inv_cmd_queue, &cmd, 0) == pdPASS)
-        {
-            inverter_write_register(cmd.reg, cmd.value);
-            xEventGroupSetBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS); // Trigger a settings refresh after writing
-            vTaskDelay(pdMS_TO_TICKS(100));                                       // Short delay after write before next action
-        }
-
-        for (int i = 0; i < sizeof(blocks_to_read) / sizeof(modbus_block_t); i++)
-        {
-            if (xEventGroupGetBits(inverter_event_group) & INV_EVENT_REFRESH_SETTINGS)
-            {
-                inverter_read_block(&settings_block);
-
-                xEventGroupClearBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS);
-                vTaskDelay(pdMS_TO_TICKS(100));
-            }
-
-            inverter_read_block(&blocks_to_read[i]);
-
-            vTaskDelay(pdMS_TO_TICKS(100)); // Short delay between block reads
-        }
-        vTaskDelay(pdMS_TO_TICKS(SNIFFER_READ_INTERVAL_MS)); // Delay before next full read cycle
     }
 }
 
@@ -295,6 +302,20 @@ esp_err_t inverter_write_register(uint16_t reg_addr, uint16_t value)
 
         return ESP_FAIL;
     }
+}
+
+void update_system_status() {
+    // System status update
+    uptime_seconds = xTaskGetTickCount() * portTICK_PERIOD_MS / 1000;
+    free_heap = esp_get_free_heap_size();
+    min_heap_free = esp_get_minimum_free_heap_size();
+
+    char json_string[512];
+
+    snprintf(json_string, sizeof(json_string), "{\"uptime_seconds\": %llu, \"last_reset_reason\": %d, \"free_heap\": %lu, \"min_heap_free\": %lu}",
+    uptime_seconds, last_reset_reason, free_heap, min_heap_free);
+
+    mqtt_publish_topic(MQTT_SYSTEM_TOPIC, json_string);
 }
 
 // void sniffer_task(void *arg)

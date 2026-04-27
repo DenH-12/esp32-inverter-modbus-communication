@@ -9,10 +9,11 @@
 #define MQTT_TOPIC_PREFIX "inverter/"
 #define MQTT_REALTIME_TOPIC "inverter/stats"
 #define MQTT_SETTINGS_TOPIC "inverter/settings"
+#define MQTT_SYSTEM_TOPIC "inverter/system"
 
 extern QueueHandle_t btn_queue;
 
 void mqtt_init(void);
 
 void mqtt_publish_sensor(const char* sensor_name, float value, const char* unit);
-int mqtt_publish_readings(const char *topic, const char *payload);
+int mqtt_publish_topic(const char *topic, const char *payload);

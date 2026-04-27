@@ -1,12 +1,104 @@
 type: vertical-stack
 cards:
-  - type: button
-    entity: button.inverter_settings
-    name: Refresh
-    tap_action:
-      action: toggle
-    color: green
-    icon_height: 30px
+  - type: gauge
+    entity: sensor.battery_charge_percent
+    name: Заряд АКБ
+    min: 0
+    max: 100
+    severity:
+      green: 70
+      yellow: 30
+      red: 0
+    needle: false
+  - type: glance
+    entities:
+      - entity: sensor.battery_voltage
+        name: Напруга
+        icon: mdi:battery
+      - entity: sensor.output_power
+        name: Навантаження
+        icon: mdi:home-lightning-bolt
+        show_last_changed: false
+        show_state: true
+      - entity: sensor.pv_power
+        name: Сонце
+        icon: mdi:solar-power
+        show_state: true
+  - type: glance
+    entities:
+      - entity: sensor.grid_voltage
+        name: Мережа
+        icon: mdi:transmission-tower
+        card_mod:
+          style: |
+            state-badge {
+              color: {% if states('sensor.grid_voltage') | float < 150 %} red {% endif %};
+            }
+      - entity: sensor.battery_current
+        name: Струм АКБ
+        icon: mdi:battery
+      - entity: sensor.internal_temp
+        name: Температура
+  - type: glance
+    entities:
+      - entity: sensor.grid_power
+        icon: mdi:transmission-tower-export
+        name: Мережа Вт
+      - entity: sensor.battery_power
+        name: Потужність АКБ
+        icon: mdi:battery
+      - entity: sensor.pv_voltage
+        icon: mdi:solar-power-variant-outline
+        name: Напруга сонця
+  - type: gauge
+    entity: sensor.load_percent
+    name: Навантаження
+    needle: true
+    severity:
+      green: 0
+      yellow: 50
+      red: 80
+  - type: gauge
+    entity: sensor.pv_voltage
+    needle: true
+    severity:
+      green: 250
+      yellow: 230
+      red: 0
+    name: Сонце ☀️
+    min: 220
+    max: 270
+grid_options:
+  columns: 12
+  rows: auto
+
+# ----------------------------------------
+type: vertical-stack
+cards:
+  - type: horizontal-stack
+    cards:
+      - type: entity
+        entity: sensor.status
+      - type: entity
+        entity: sensor.free_heap
+      - type: entity
+        entity: sensor.minimum_heap_free
+  - type: horizontal-stack
+    cards:
+      - type: button
+        entity: button.inverter_settings
+        name: Refresh
+        tap_action:
+          action: toggle
+        color: green
+        icon_height: 30px
+      - type: entity
+        entity: sensor.uptime_seconds
+        name: Uptime
+        secondary_info: state
+      - type: entity
+        entity: sensor.last_reset_reason
+        secondary_info: state
   - type: entities
     entities:
       - entity: number.battery_bulk_voltage
@@ -69,6 +161,11 @@ cards:
         name: Cutoff SOC
         secondary_info: state
         icon: mdi:battery-alert
+grid_options:
+  columns: 12
+  rows: auto
+
+# ----------------------------------------
 
 type: vertical-stack
 cards:

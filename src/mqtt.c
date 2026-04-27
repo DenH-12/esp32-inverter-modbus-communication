@@ -13,6 +13,7 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT connected");
+        esp_mqtt_client_publish(client, "inverter/status", "online", 0, 1, 1);
         esp_mqtt_client_subscribe(client, "inverter/cmnd/+", 0);
         xEventGroupSetBits(inverter_event_group, INV_EVENT_MQTT_CONNECTED);
         break;
@@ -32,9 +33,17 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         {
             ESP_LOGI(TAG, "Received refresh command via MQTT");
             xEventGroupSetBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS);
+            break;
         }
-        else
+        else if (strstr(topic, "inverter/cmnd"))
         {
+            // Check for system reset command
+            if (strstr(topic, "system_reset") && atoi(data) == 1)
+            {
+                ESP_LOGI(TAG, "Received command for system reset via MQTT");
+                esp_restart();
+            }
+            // Check for set setting commands
             for (size_t i = 0; i < inv_settings_map_len; i++)
             {
                 const reg_metadata_t *meta = &inv_settings_map[i];
@@ -53,6 +62,7 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
                 }
             }
         }
+        
         break;
     }
 }
@@ -61,8 +71,14 @@ void mqtt_init(void)
 {
     esp_mqtt_client_config_t cfg = {
         .broker.address.uri = MQTT_BROKER_URI,
-        .network.timeout_ms = 20000,
-        .session.keepalive = 60,
+        .network.timeout_ms = 10000,
+        .session.keepalive = 15,
+        .session.last_will = {
+            .topic = "inverter/status",
+            .msg = "offline",
+            .qos = 1,
+            .retain = true,
+        },
     };
 
     client = esp_mqtt_client_init(&cfg);
@@ -84,10 +100,10 @@ void mqtt_publish_sensor(const char *sensor_name, float value, const char *unit)
     esp_mqtt_client_publish(client, topic, payload, 0, 0, 0);
 }
 
-int mqtt_publish_readings(const char *topic, const char *payload)
+int mqtt_publish_topic(const char *topic, const char *payload)
 {
     char topic_buffer[64];
     snprintf(topic_buffer, sizeof(topic_buffer), "%s", topic);
 
-    return esp_mqtt_client_publish(client, topic_buffer, payload, 0, 1, 0);
+    return esp_mqtt_client_publish(client, topic_buffer, payload, 0, 0, 0);
 }

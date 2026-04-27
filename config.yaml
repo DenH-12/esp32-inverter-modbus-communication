@@ -137,11 +137,44 @@ mqtt:
       value_template: "{{ value_json.temp_inv }}"
       device_class: "temperature"
 
+    # --- System Status ---
+    - name: "Status"
+      unique_id: inv_system_status
+      state_topic: "inverter/status"
+
+    - name: "Uptime Seconds"
+      unique_id: inv_system_uptime_seconds
+      state_topic: "inverter/system"
+      unit_of_measurement: "s"
+      value_template: "{{ value_json.uptime_seconds }}"
+      device_class: "duration"
+
+    - name: "Last Reset Reason"
+      unique_id: inv_system_last_reset_reason
+      state_topic: "inverter/system"
+      value_template: "{{ value_json.last_reset_reason }}"
+
+    - name: "Free Heap"
+      unique_id: inv_system_free_heap
+      state_topic: "inverter/system"
+      unit_of_measurement: "B"
+      value_template: "{{ value_json.free_heap }}"
+
+    - name: "Minimum Heap Free"
+      unique_id: inv_system_min_heap_free
+      state_topic: "inverter/system"
+      unit_of_measurement: "B"
+      value_template: "{{ value_json.min_heap_free }}"
+
   # ------------------------- Settings -----------------------------
   button:
     - name: "Refresh Settings"
       unique_id: inv_refresh_settings
       command_topic: "inverter/cmnd/refresh"
+      payload_press: "1"
+    - name: "System Reset"
+      unique_id: inv_system_reset
+      command_topic: "inverter/cmnd/system_reset"
       payload_press: "1"
 
   # -------------------------- Selects -----------------------------
@@ -645,6 +678,17 @@ template:
             {{ ((voltage - cutoff) / (bulk - cutoff) * 100) | int }}
           {% endif %}
 
+      - name: "Inverter Uptime Human"
+        state: >
+          {% set uptime = states('sensor.uptime_seconds') | int(0) %}
+          {% set days = uptime // 86400 %}
+          {% set hours = (uptime % 86400) // 3600 %}
+          {% set minutes = (uptime % 3600) // 60 %}
+          {% set seconds = uptime % 60 %}
+
+          {{ "%dd %02dh %02dm %02ds" | format(days, hours, minutes, seconds) if days > 0 else "%02dh %02dm %02ds" | format(hours, minutes, seconds) }}
+
+
 sensor:
   - platform: integration
     source: sensor.pv_power
@@ -674,3 +718,9 @@ sensor:
     name: "Energy Grid Import Total"
     unit_prefix: k
     method: left
+
+logbook:
+  exclude:
+    entities:
+      - sensor.inverter_uptime_human
+
