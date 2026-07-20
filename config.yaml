@@ -9,26 +9,31 @@ automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
 
+recorder:
+  exclude:
+    entities:
+      - sensor.inverter_uptime_human
+
 mqtt:
   sensor:
     # --- Grid Data ---
     - name: "Grid Voltage"
       unique_id: inv_grid_v
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "V"
       value_template: "{{ value_json.grid_voltage }}"
       device_class: "voltage"
 
     - name: "Grid Frequency"
       unique_id: inv_grid_freq
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "Hz"
       value_template: "{{ value_json.grid_freq }}"
       device_class: "frequency"
 
     - name: "Grid Power"
       unique_id: inv_grid_p
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "W"
       value_template: "{{ value_json.grid_power }}"
       device_class: "power"
@@ -37,35 +42,35 @@ mqtt:
     # --- Output Data ---
     - name: "Output Voltage"
       unique_id: inv_out_v
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "V"
       value_template: "{{ value_json.out_voltage }}"
       device_class: "voltage"
 
     - name: "Output Frequency"
       unique_id: inv_output_freq
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "Hz"
       value_template: "{{ value_json.out_freq }}"
       device_class: "frequency"
 
     - name: "Output Power"
       unique_id: inv_out_p
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "W"
       value_template: "{{ value_json.out_power }}"
       device_class: "power"
 
     - name: "Output Current"
       unique_id: inv_out_a
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "A"
       value_template: "{{ value_json.out_current }}"
       device_class: "current"
 
     - name: "Output VA"
       unique_id: inv_out_va
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "VA"
       value_template: "{{ value_json.out_va }}"
       device_class: "apparent_power"
@@ -73,21 +78,21 @@ mqtt:
     # --- Battery Data ---
     - name: "Battery Voltage"
       unique_id: inv_batt_v
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "V"
       value_template: "{{ value_json.batt_voltage }}"
       device_class: "voltage"
 
     - name: "Battery Current"
       unique_id: inv_batt_a
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "A"
       value_template: "{{ value_json.batt_current }}"
       device_class: "current"
 
     - name: "Battery Power"
       unique_id: inv_batt_p
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "W"
       value_template: "{{ value_json.batt_power }}"
       device_class: "power"
@@ -96,21 +101,21 @@ mqtt:
     # --- Solar Data ---
     - name: "PV Voltage"
       unique_id: inv_pv_v
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "V"
       value_template: "{{ value_json.pv_voltage }}"
       device_class: "voltage"
 
     - name: "PV Current"
       unique_id: inv_pv_a
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "A"
       value_template: "{{ value_json.pv_current }}"
       device_class: "current"
 
     - name: "PV Power"
       unique_id: inv_pv_p
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "W"
       value_template: "{{ value_json.pv_power }}"
       device_class: "power"
@@ -118,21 +123,21 @@ mqtt:
 
     - name: "Load Percent"
       unique_id: inv_load_pct
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "%"
       value_template: "{{ value_json.load_pct }}"
 
     # --- Temperatures ---
     - name: "DC Temp"
       unique_id: inv_temp_dc
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "°C"
       value_template: "{{ value_json.temp_dc }}"
       device_class: "temperature"
 
     - name: "Internal Temp"
       unique_id: inv_temp_inv
-      state_topic: "inverter/stats"
+      state_topic: "ESP32_Solar_F1EB60/stats"
       unit_of_measurement: "°C"
       value_template: "{{ value_json.temp_inv }}"
       device_class: "temperature"
@@ -140,29 +145,29 @@ mqtt:
     # --- System Status ---
     - name: "Status"
       unique_id: inv_system_status
-      state_topic: "inverter/status"
+      state_topic: "ESP32_Solar_F1EB60/status"
 
     - name: "Uptime Seconds"
       unique_id: inv_system_uptime_seconds
-      state_topic: "inverter/system"
+      state_topic: "ESP32_Solar_F1EB60/system"
       unit_of_measurement: "s"
       value_template: "{{ value_json.uptime_seconds }}"
       device_class: "duration"
 
     - name: "Last Reset Reason"
       unique_id: inv_system_last_reset_reason
-      state_topic: "inverter/system"
+      state_topic: "ESP32_Solar_F1EB60/system"
       value_template: "{{ value_json.last_reset_reason }}"
 
     - name: "Free Heap"
       unique_id: inv_system_free_heap
-      state_topic: "inverter/system"
+      state_topic: "ESP32_Solar_F1EB60/system"
       unit_of_measurement: "B"
       value_template: "{{ value_json.free_heap }}"
 
     - name: "Minimum Heap Free"
       unique_id: inv_system_min_heap_free
-      state_topic: "inverter/system"
+      state_topic: "ESP32_Solar_F1EB60/system"
       unit_of_measurement: "B"
       value_template: "{{ value_json.min_heap_free }}"
 
@@ -176,12 +181,13 @@ mqtt:
       unique_id: inv_system_reset
       command_topic: "inverter/cmnd/system_reset"
       payload_press: "1"
+      qos: 1
 
   # -------------------------- Selects -----------------------------
   select:
     - name: "Output Priority"
       unique_id: inv_set_output_priority
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'UTI', '1': 'SOL', '2': 'SBU', '3': 'SUB', '4': 'SUF'} %}
         {{ mapper.get(value_json.set_output_priority | string, 'Unknown') }}
@@ -201,7 +207,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Input Voltage Range"
       unique_id: inv_set_input_voltage_range
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Appliances', '1': 'UPS', '2': 'Generator'} %}
         {{ mapper.get(value_json.set_input_voltage_range | string, 'Unknown') }}
@@ -219,7 +225,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Buzzer Mode"
       unique_id: inv_set_buzzer_mode
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Off', '1': 'On', '2': 'Mute when input source changes', '3': 'Alarm Only'} %}
         {{ mapper.get(value_json.set_buzzer_mode | string, 'Unknown') }}
@@ -236,7 +242,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Beep Source Interrupt"
       unique_id: inv_set_beep_source_intrpt
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Off', '1': 'On'} %}
         {{ mapper.get(value_json.set_beep_source_intrpt | string, 'Unknown') }}
@@ -251,7 +257,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Backlight"
       unique_id: inv_set_backlight
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Off', '1': 'On'} %}
         {{ mapper.get(value_json.set_backlight | string, 'Unknown') }}
@@ -266,7 +272,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Return Default Display"
       unique_id: inv_set_return_default_display
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Off', '1': 'On'} %}
         {{ mapper.get(value_json.set_return_default_display | string, 'Unknown') }}
@@ -281,7 +287,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Power Save Mode"
       unique_id: inv_set_pwr_save_mode
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Off', '1': 'On'} %}
         {{ mapper.get(value_json.set_pwr_save_mode | string, 'Unknown') }}
@@ -296,7 +302,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Overload Restart"
       unique_id: inv_set_overload_restart
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Off', '1': 'On'} %}
         {{ mapper.get(value_json.set_overload_restart | string, 'Unknown') }}
@@ -311,7 +317,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Overtemp Restart"
       unique_id: inv_set_overtemp_restart
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Off', '1': 'On'} %}
         {{ mapper.get(value_json.set_overtemp_restart | string, 'Unknown') }}
@@ -326,7 +332,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Overload Bypass"
       unique_id: inv_set_overload_bypass
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Off', '1': 'On'} %}
         {{ mapper.get(value_json.set_overload_bypass | string, 'Unknown') }}
@@ -341,7 +347,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Output Voltage"
       unique_id: inv_set_output_voltage
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_out_voltage | string + 'Vac' }}"
       command_topic: "inverter/cmnd/set_out_voltage"
       command_template: "{{ value.replace('Vac', '') }}"
@@ -353,7 +359,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Output Frequency"
       unique_id: inv_set_output_frequency
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_out_frequency | string + 'Hz' }}"
       command_topic: "inverter/cmnd/set_out_frequency"
       command_template: "{{ value.replace('Hz', '') }}"
@@ -364,7 +370,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Battery Type"
       unique_id: inv_set_battery_type
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'AGM', '1': 'Flooded', '2': 'User', '3': 'Li1', '4': 'Li2', '5': 'Li3', '6': 'Li4'} %}
         {{ mapper.get(value_json.set_batt_type | string, 'Unknown') }}
@@ -384,7 +390,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Battery Charge Priority"
       unique_id: inv_set_batt_chg_priority
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Utility First', '1': 'Solar First', '2': 'Solar&Utility', '3': 'Solar Only'} %}
         {{ mapper.get(value_json.set_batt_chg_priority | string, 'Unknown') }}
@@ -401,7 +407,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Equalization Mode"
       unique_id: inv_set_batt_eq_mode
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: >
         {% set mapper = {'0': 'Off', '1': 'On'} %}
         {{ mapper.get(value_json.set_batt_eq_mode | string, 'Unknown') }}
@@ -418,7 +424,7 @@ mqtt:
   number:
     - name: "High DC Protection Voltage"
       unique_id: inv_set_batt_dc_protect_voltage
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_dc_protect_voltage }}"
       command_topic: "inverter/cmnd/set_batt_dc_protect_voltage"
       min: 50
@@ -430,7 +436,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Bulk Voltage"
       unique_id: inv_set_batt_bulk_voltage
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_bulk_voltage }}"
       command_topic: "inverter/cmnd/set_batt_bulk_voltage"
       min: 48
@@ -449,7 +455,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Float Voltage"
       unique_id: inv_set_batt_float_voltage
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_float_voltage }}"
       command_topic: "inverter/cmnd/set_batt_float_voltage"
       min: 40
@@ -468,7 +474,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Battery Recovery Voltage"
       unique_id: inv_set_batt_recovery_voltage
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_recovery_voltage }}"
       command_topic: "inverter/cmnd/set_batt_recovery_voltage"
       min: 40
@@ -489,7 +495,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Protection Voltage"
       unique_id: inv_set_batt_protection_voltage
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_protection_voltage }}"
       command_topic: "inverter/cmnd/set_batt_protection_voltage"
       min: 44
@@ -509,7 +515,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Battery Cutoff Voltage"
       unique_id: inv_set_batt_cutoff_voltage
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_cutoff_voltage }}"
       command_topic: "inverter/cmnd/set_batt_cutoff_voltage"
       min: 40
@@ -528,7 +534,7 @@ mqtt:
     # --------------------------------------------------------  
     - name: "Battery CV/Float Time"
       unique_id: inv_set_batt_cv_float_time
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_cv_float_time }}"
       command_topic: "inverter/cmnd/set_batt_cv_float_time"
       min: 0    # 0 means auto
@@ -540,7 +546,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Battery Max Charge Current"
       unique_id: inv_set_max_chg
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_max_chg_a }}"
       command_topic: "inverter/cmnd/set_batt_max_chg_a"
       min: 10
@@ -552,7 +558,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Max AC Charge Current"
       unique_id: inv_set_batt_max_ac_chg_current
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_max_ac_chg_current }}"
       command_topic: "inverter/cmnd/set_batt_max_ac_chg_current"
       min: 10
@@ -564,7 +570,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Equalization Charge Voltage"
       unique_id: inv_set_batt_eq_chg_voltage
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_eq_chg_voltage }}"
       command_topic: "inverter/cmnd/set_batt_eq_chg_voltage"
       min: 48
@@ -576,7 +582,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Equalization Charge Time"
       unique_id: inv_set_batt_eq_chg_time
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_eq_chg_time }}"
       command_topic: "inverter/cmnd/set_batt_eq_chg_time"
       min: 0
@@ -588,7 +594,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Equalization Timeout"
       unique_id: inv_set_batt_eq_timeout
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_eq_timeout }}"
       command_topic: "inverter/cmnd/set_batt_eq_timeout"
       min: 0
@@ -600,7 +606,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Equalization Interval"
       unique_id: inv_set_batt_eq_interval
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_eq_interval }}"
       command_topic: "inverter/cmnd/set_batt_eq_interval"
       min: 1
@@ -612,7 +618,7 @@ mqtt:
       # --------------------------------------------------------
     - name: "Battery Protection SOC"
       unique_id: inv_set_batt_protection_soc
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_protection_soc }}"
       command_topic: "inverter/cmnd/set_batt_protection_soc"
       min: 5
@@ -624,7 +630,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Recovery SOC"
       unique_id: inv_set_batt_recovery_soc
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_recovery_soc }}"
       command_topic: "inverter/cmnd/set_batt_recovery_soc"
       min: 60
@@ -636,7 +642,7 @@ mqtt:
     # --------------------------------------------------------
     - name: "Battery Cut-Off SOC"
       unique_id: inv_set_batt_cut_off_soc
-      state_topic: "inverter/settings"
+      state_topic: "ESP32_Solar_F1EB60/settings"
       value_template: "{{ value_json.set_batt_cut_off_soc }}"
       command_topic: "inverter/cmnd/set_batt_cut_off_soc"
       min: 3
@@ -688,7 +694,6 @@ template:
 
           {{ "%dd %02dh %02dm %02ds" | format(days, hours, minutes, seconds) if days > 0 else "%02dh %02dm %02ds" | format(hours, minutes, seconds) }}
 
-
 sensor:
   - platform: integration
     source: sensor.pv_power
@@ -718,9 +723,3 @@ sensor:
     name: "Energy Grid Import Total"
     unit_prefix: k
     method: left
-
-logbook:
-  exclude:
-    entities:
-      - sensor.inverter_uptime_human
-

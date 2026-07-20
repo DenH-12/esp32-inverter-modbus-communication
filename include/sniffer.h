@@ -1,6 +1,8 @@
 #pragma once
 
-#include "uart.h"
+#include "driver/uart.h"
+#include "driver/gpio.h" 
+#include "mqtt.h"
 
 #define SNIFFER_PORT_NUM UART_NUM_1
 #define SNIFFER_BAUD_RATE 9600
@@ -15,6 +17,7 @@
 
 #define INV_EVENT_REFRESH_SETTINGS (1 << 0) // Set this bit to trigger a settings refresh read from the inverter
 #define INV_EVENT_MQTT_CONNECTED (1 << 1)   // Set this bit when MQTT is connected, so we can publish immediately
+#define INV_EVENT_WIFI_CONNECTED (1 << 2)   // Set this bit when Wi-Fi is connected, so we can publish immediately
 
 // Structure to define Modbus blocks we want to read
 typedef struct
@@ -27,7 +30,7 @@ typedef struct
 // Register addresses
 typedef enum
 {
-    // Bлок REAL_TIME_DATA (200+)
+    // Block REAL_TIME_DATA (200+)
     REG_GRID_VOLTAGE = 202,
     REG_GRID_FREQ = 203,
     REG_GRID_POWER = 204,
@@ -46,7 +49,7 @@ typedef enum
     REG_TEMP_DC = 226,
     REG_TEMP_INV = 227,
 
-    // Bлок SETTINGS_DATA (300+)
+    // Block SETTINGS_DATA (300+)
     REG_SET_OUT_PRIORITY = 301,
     REG_SET_INPUT_V_RANGE = 302,
     REG_SET_BUZZER_MODE = 303,

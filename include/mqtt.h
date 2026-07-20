@@ -4,14 +4,15 @@
 #include "mqtt_client.h"
 #include "freertos/event_groups.h"
 #include "sniffer.h"
-
-#define MQTT_BROKER_URI "mqtt://10.42.0.1:1883"
-#define MQTT_TOPIC_PREFIX "inverter/"
-#define MQTT_REALTIME_TOPIC "inverter/stats"
-#define MQTT_SETTINGS_TOPIC "inverter/settings"
-#define MQTT_SYSTEM_TOPIC "inverter/system"
+#include "myNVS.h"
 
 extern QueueHandle_t btn_queue;
+extern char device_id[32];
+
+extern char mqtt_stats_topic[64];
+extern char mqtt_settings_topic[64];
+extern char mqtt_system_topic[64];
+extern char mqtt_cmnd_topic[64];
 
 void mqtt_init(void);
 

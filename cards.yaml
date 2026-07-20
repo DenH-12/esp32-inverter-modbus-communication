@@ -47,44 +47,40 @@ cards:
       - entity: sensor.battery_power
         name: Потужність АКБ
         icon: mdi:battery
-      - entity: sensor.pv_voltage
-        icon: mdi:solar-power-variant-outline
-        name: Напруга сонця
-  - type: gauge
-    entity: sensor.load_percent
-    name: Навантаження
-    needle: true
-    severity:
-      green: 0
-      yellow: 50
-      red: 80
-  - type: gauge
-    entity: sensor.pv_voltage
-    needle: true
-    severity:
-      green: 250
-      yellow: 230
-      red: 0
-    name: Сонце ☀️
-    min: 220
-    max: 270
-grid_options:
-  columns: 12
-  rows: auto
+      - entity: sensor.output_voltage
+        icon: mdi:flash-triangle
+        name: Вихідна напруга
+  - type: horizontal-stack
+    cards:
+    - type: gauge
+      entity: sensor.load_percent
+      name: Навантаження
+      needle: true
+      severity:
+        green: 0
+        yellow: 50
+        red: 80
+    - type: gauge
+      entity: sensor.pv_voltage
+      needle: true
+      severity:
+        green: 250
+        yellow: 230
+        red: 0
+      name: Сонце ☀️
+      min: 220
+      max: 270
+
 
 # ----------------------------------------
 type: vertical-stack
 cards:
+  - type: entity
+    entity: sensor.inverter_uptime_human
   - type: horizontal-stack
     cards:
       - type: entity
         entity: sensor.status
-      - type: entity
-        entity: sensor.free_heap
-      - type: entity
-        entity: sensor.minimum_heap_free
-  - type: horizontal-stack
-    cards:
       - type: button
         entity: button.inverter_settings
         name: Refresh
@@ -92,10 +88,12 @@ cards:
           action: toggle
         color: green
         icon_height: 30px
+  - type: horizontal-stack
+    cards:
       - type: entity
-        entity: sensor.uptime_seconds
-        name: Uptime
-        secondary_info: state
+        entity: sensor.free_heap
+      - type: entity
+        entity: sensor.minimum_heap_free
       - type: entity
         entity: sensor.last_reset_reason
         secondary_info: state
@@ -161,12 +159,8 @@ cards:
         name: Cutoff SOC
         secondary_info: state
         icon: mdi:battery-alert
-grid_options:
-  columns: 12
-  rows: auto
 
 # ----------------------------------------
-
 type: vertical-stack
 cards:
   - type: entities
@@ -189,7 +183,7 @@ cards:
       - entity: select.return_default_display
         name: Return Default Display
         icon: mdi:home-automation
-      - entity: select.pwr_save_mode
+      - entity: select.power_save_mode
         name: Power Save Mode
         icon: mdi:power-sleep
       - entity: select.overload_restart
@@ -213,4 +207,14 @@ cards:
       - entity: select.battery_charge_priority
         name: Battery Charge Priority
         icon: mdi:battery-charging
-          
+  - type: button
+    entity: button.system_reset
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.system_reset
+      confirmation:
+        text: Reset System?
+    color: green
+    icon_height: 30px

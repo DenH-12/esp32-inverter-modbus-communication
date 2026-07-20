@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "wifi.h"
 #include "sniffer.h"
+#include "myNVS.h"
 
 static const char *TAG = "APP";
 uint64_t uptime_seconds;
@@ -17,6 +18,7 @@ void app_main(void)
     uptime_seconds = 0;
     last_reset_reason = esp_reset_reason();
 
+    nvs_init();
     wifi_init();
     sniffer_init();
 

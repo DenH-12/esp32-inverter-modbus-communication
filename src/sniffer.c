@@ -1,5 +1,4 @@
 #include "sniffer.h"
-#include "mqtt.h"
 
 static const char *TAG = "INVERTER";
 
@@ -74,7 +73,8 @@ const size_t inv_settings_map_len = sizeof(inv_settings_map) / sizeof(inv_settin
 void sniffer_init()
 {
     inverter_event_group = xEventGroupCreate();
-    xEventGroupSetBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS); // Trigger initial settings read on startup
+    // Trigger initial settings read on startup
+    xEventGroupSetBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS);
 
     uart_config_t sniffer_config = {
         .baud_rate = SNIFFER_BAUD_RATE,
@@ -90,6 +90,9 @@ void sniffer_init()
     ESP_ERROR_CHECK(uart_driver_install(SNIFFER_PORT_NUM, SNIFFER_BUF_SIZE, 0, 0, NULL, 0));
 
     inv_cmd_queue = xQueueCreate(10, sizeof(inv_cmd_t));
+
+    ESP_LOGI(TAG, "MQTT Stats Topic: %s", mqtt_stats_topic);
+    ESP_LOGI(TAG, "MQTT Settings Topic: %s", mqtt_settings_topic);
 }
 
 void inverter_read_task(void *pvParameters)
@@ -99,7 +102,12 @@ void inverter_read_task(void *pvParameters)
 
     while (1)
     {
-        update_system_status();
+        // Check WiFi connection before reading
+        if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_WIFI_CONNECTED))
+        {
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            continue;
+        }
 
         // Check MQTT connection before reading
         if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED))
@@ -115,6 +123,8 @@ void inverter_read_task(void *pvParameters)
             xEventGroupSetBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS); // Trigger a settings refresh after writing
             vTaskDelay(pdMS_TO_TICKS(100));                                       // Short delay after write before next action
         }
+
+        update_system_status();
 
         for (int i = 0; i < sizeof(blocks_to_read) / sizeof(modbus_block_t); i++)
         {
@@ -134,7 +144,6 @@ void inverter_read_task(void *pvParameters)
     }
 }
 
-
 void parse_inverter_data(uint16_t start_addr, uint8_t *data)
 {
     if (start_addr == 200)
@@ -146,6 +155,7 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
             json_string[0] = '{';  // Start JSON
             json_string[1] = '\0'; // set terminator, so strncat works
 
+            // Loop through the inv_map to get the values and build the JSON string
             for (size_t i = 0; i < sizeof(inv_map) / sizeof(inv_map[0]); i++)
             {
                 const reg_metadata_t *meta = &inv_map[i];
@@ -169,7 +179,7 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
             }
             strncat(json_string, "}", sizeof(json_string) - strlen(json_string) - 1); // End JSON
 
-            mqtt_publish_topic(MQTT_REALTIME_TOPIC, json_string);
+            mqtt_publish_topic(mqtt_stats_topic, json_string);
         }
     }
     else if (start_addr == 300)
@@ -204,7 +214,7 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
             }
             strncat(json_string, "}", sizeof(json_string) - strlen(json_string) - 1); // End JSON
 
-            mqtt_publish_topic(MQTT_SETTINGS_TOPIC, json_string);
+            mqtt_publish_topic(mqtt_settings_topic, json_string);
         }
     }
 }
@@ -304,7 +314,8 @@ esp_err_t inverter_write_register(uint16_t reg_addr, uint16_t value)
     }
 }
 
-void update_system_status() {
+void update_system_status()
+{
     // System status update
     uptime_seconds = xTaskGetTickCount() * portTICK_PERIOD_MS / 1000;
     free_heap = esp_get_free_heap_size();
@@ -313,9 +324,9 @@ void update_system_status() {
     char json_string[512];
 
     snprintf(json_string, sizeof(json_string), "{\"uptime_seconds\": %llu, \"last_reset_reason\": %d, \"free_heap\": %lu, \"min_heap_free\": %lu}",
-    uptime_seconds, last_reset_reason, free_heap, min_heap_free);
+             uptime_seconds, last_reset_reason, free_heap, min_heap_free);
 
-    mqtt_publish_topic(MQTT_SYSTEM_TOPIC, json_string);
+    mqtt_publish_topic(mqtt_system_topic, json_string);
 }
 
 // void sniffer_task(void *arg)
