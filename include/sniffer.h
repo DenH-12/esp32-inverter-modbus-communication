@@ -13,11 +13,69 @@
 #define SNIFFER_MODBUS_ADDR 0x01
 #define SNIFFER_OUTPUT_READINGS 0
 #define SNIFFER_PUBLISH_MQTT 1
-#define SNIFFER_READ_INTERVAL_MS 2000
 
 #define INV_EVENT_REFRESH_SETTINGS (1 << 0) // Set this bit to trigger a settings refresh read from the inverter
 #define INV_EVENT_MQTT_CONNECTED (1 << 1)   // Set this bit when MQTT is connected, so we can publish immediately
 #define INV_EVENT_WIFI_CONNECTED (1 << 2)   // Set this bit when Wi-Fi is connected, so we can publish immediately
+
+// sensors ids
+typedef enum
+{
+    ID_GRID_VOLTAGE,
+    ID_GRID_FREQUENCY,
+    ID_GRID_POWER,
+    ID_OUTPUT_VOLTAGE,
+    ID_OUTPUT_FREQUENCY,
+    ID_OUTPUT_POWER,
+    ID_OUTPUT_CURRENT,
+    ID_OUTPUT_VA,
+    ID_BATTERY_VOLTAGE,
+    ID_BATTERY_CURRENT,
+    ID_BATTERY_POWER,
+    ID_PV_VOLTAGE,
+    ID_PV_CURRENT,
+    ID_PV_POWER,
+    ID_LOAD_PERCENT,
+    ID_TEMP_DC,
+    ID_TEMP_INV,
+    ID_STATUS,
+    ID_UPTIME_SECONDS,
+    ID_LAST_RESET_REASON,
+    ID_FREE_HEAP,
+    ID_MIN_HEAP_FREE,
+    ID_OUTPUT_PRIORITY,
+    ID_INPUT_VOLTAGE_RANGE,
+    ID_BUZZER_MODE,
+    ID_BEEP_SOURCE_INTERRUPT,
+    ID_BACKLIGHT,
+    ID_RETURN_DEFAULT_DISPLAY,
+    ID_POWER_SAVE_MODE,
+    ID_OVERLOAD_RESTART,
+    ID_OVERTEMP_RESTART,
+    ID_OVERLOAD_BYPASS,
+    ID_SET_OUTPUT_VOLTAGE,
+    ID_SET_OUTPUT_FREQUENCY,
+    ID_BATTERY_TYPE,
+    ID_BATTERY_DC_PROTECT_VOLTAGE,
+    ID_BATTERY_BULK_VOLTAGE,
+    ID_BATTERY_FLOAT_VOLTAGE,
+    ID_BATTERY_RECOVERY_VOLTAGE,
+    ID_BATTERY_PROTECTION_VOLTAGE,
+    ID_BATTERY_CUTOFF_VOLTAGE,
+    ID_BATTERY_CV_FLOAT_TIME,
+    ID_BATTERY_CHARGE_PRIORITY,
+    ID_BATTERY_MAX_CHARGE_CURRENT,
+    ID_BATTERY_MAX_AC_CHARGE_CURRENT,
+    ID_BATTERY_EQUALIZATION_CHARGE_VOLTAGE,
+    ID_BATTERY_EQUALIZATION_CHARGE_TIME,
+    ID_BATTERY_EQUALIZATION_TIMEOUT,
+    ID_BATTERY_EQUALIZATION_INTERVAL,
+    ID_BATTERY_EQUALIZATION_MODE,
+    ID_BATTERY_PROTECTION_SOC,
+    ID_BATTERY_RECOVERY_SOC,
+    ID_BATTERY_CUTOFF_SOC,
+    IDS_COUNT
+} sensor_id_t;
 
 // Structure to define Modbus blocks we want to read
 typedef struct
@@ -86,10 +144,11 @@ typedef enum
 
 typedef struct
 {
+    sensor_id_t id;
     inverter_reg_t reg;
-    const char *name;
     float multiplier;
     bool is_signed;
+    const char *name_id;
 } reg_metadata_t;
 
 typedef struct
@@ -102,10 +161,8 @@ extern EventGroupHandle_t inverter_event_group;
 extern const reg_metadata_t inv_settings_map[];
 extern QueueHandle_t inv_cmd_queue;
 extern const size_t inv_settings_map_len;
-extern uint64_t uptime_seconds;
-extern esp_reset_reason_t last_reset_reason;
-extern size_t free_heap;
-extern size_t min_heap_free;
+extern const size_t inv_map_len;
+extern const reg_metadata_t inv_map[];
 
 void sniffer_init();
 
@@ -119,4 +176,3 @@ uint16_t crc16_modbus(const uint8_t *data, uint16_t len);
 esp_err_t send_modbus_request(uint16_t start_addr, uint16_t count);
 void parse_inverter_data(uint16_t start_addr, uint8_t *data);
 void inverter_read_block(const modbus_block_t *block);
-void update_system_status();

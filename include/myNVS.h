@@ -2,8 +2,18 @@
 #include "nvs.h"
 #include "esp_log.h"
 
+#define NVS_NAMESPACE "storage"
+#define NVS_KEY_NEED_INIT "need_init"
+#define NVS_DISCOVERY_TOPIC "discovery_topic"
+#define NVS_KEY_WIFI_SSID "wifi_ssid"
+#define NVS_KEY_WIFI_PASS "wifi_password"
+#define NVS_KEY_MQTT_HOST "mqtt_broker"
+#define NVS_KEY_MQTT_PORT "mqtt_port"
+#define NVS_KEY_MQTT_USER "mqtt_username"
+#define NVS_KEY_MQTT_PASS "mqtt_password"
+#define NVS_KEY_DATA_SEC "data_sec"
+#define NVS_KEY_SYS_SEC "sys_data_sec"
+#define NVS_KEY_WEB_PORT "web_port"
+
 void nvs_init(void);
-void nvs_save_str(const char *key, const char *value);
-void nvs_save_int(const char *key, int32_t value);
-esp_err_t nvs_read_str(const char *key, char *out_buffer, size_t max_size);
-esp_err_t nvs_read_int(const char *key, int32_t *out_value);
+esp_err_t nvs_reset_saved_settings();
