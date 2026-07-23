@@ -4,34 +4,28 @@ static const char *TAG = "WIFI";
 
 static uint8_t mac[6];
 char device_id[32];
+char device_id_lower[64] = {0};
+char wifi_ip[16] = {0};
+char wifi_ssid[33] = {0};
+char wifi_password[64] = {0};
+char ap_password[64] = "87654321";
+
+size_t wifi_ssid_len = sizeof(wifi_ssid);
+size_t wifi_password_len = sizeof(wifi_password);
+size_t ap_password_len = sizeof(ap_password);
 
 static void init_device_id(void)
 {
     esp_efuse_mac_get_default(mac);
     snprintf(device_id, sizeof(device_id), "ESP32_Solar_%02X%02X%02X", mac[3], mac[4], mac[5]);
-}
-
-void wifi_rssi_task(void *arg)
-{
-    while (1)
+    // in lowercase
+    for (int i = 0; device_id[i] != '\0' && i < sizeof(device_id_lower) - 1; i++)
     {
-        wifi_ap_record_t ap_info;
-        if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK)
-        {
-            ESP_LOGI(TAG, "RSSI: %d dBm", ap_info.rssi);
-            if (xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED)
-            {
-                mqtt_publish_sensor("wifi_rssi", (float)ap_info.rssi, "dBm");
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        device_id_lower[i] = tolower((unsigned char)device_id[i]);
     }
 }
 
-static void wifi_event_handler(void *arg,
-                               esp_event_base_t event_base,
-                               int32_t event_id,
-                               void *event_data)
+static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
@@ -64,7 +58,15 @@ static void wifi_event_handler(void *arg,
     if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
         ip_event_got_ip_t *event = event_data;
-        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+
+        wifi_config_t wifi_config;
+        if (esp_wifi_get_config(WIFI_IF_STA, &wifi_config) == ESP_OK)
+        {
+            snprintf(wifi_ssid, sizeof(wifi_ssid), "%s", wifi_config.sta.ssid);
+        }
+        esp_ip4addr_ntoa(&event->ip_info.ip, wifi_ip, sizeof(wifi_ip));
+        
+        ESP_LOGI(TAG, "Connected to: \"%s\", IP: \"%s\"", wifi_ssid, wifi_ip);
 
         xEventGroupSetBits(inverter_event_group, INV_EVENT_WIFI_CONNECTED);
 
@@ -94,14 +96,23 @@ static void wifi_event_handler(void *arg,
     }
 }
 
-void wifi_init(void)
+esp_err_t wifi_init(void)
 {
     // Initialize device ID based on MAC address
     init_device_id();
 
     // Initialize Wi-Fi
-    nvs_read_str("wifi_ssid", ssid, sizeof(ssid));
-    nvs_read_str("wifi_password", password, sizeof(password));
+    nvs_handle_t my_handle;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &my_handle);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+    // Read saved wifi config
+    nvs_get_str(my_handle, NVS_KEY_WIFI_SSID, wifi_ssid, &wifi_ssid_len);
+    nvs_get_str(my_handle, NVS_KEY_WIFI_PASS, wifi_password, &wifi_password_len);
+
+    nvs_close(my_handle);
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -119,16 +130,16 @@ void wifi_init(void)
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
     wifi_config_t wifi_config = {.sta = {0}};
-    strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
-    strncpy((char *)wifi_config.sta.password, password, sizeof(wifi_config.sta.password));
+    strncpy((char *)wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_config.sta.ssid));
+    strncpy((char *)wifi_config.sta.password, wifi_password, sizeof(wifi_config.sta.password));
 
     wifi_config_t ap_config = {
         .ap = {
-            .password = "87654321",
             .channel = 1,
             .max_connection = 4,
             .authmode = WIFI_AUTH_WPA2_PSK}};
-    strncpy((char *)ap_config.ap.ssid, device_id, sizeof(ap_config.ap.ssid));
+    snprintf((char *)ap_config.ap.ssid, sizeof(ap_config.ap.ssid), "%s", device_id);
+    snprintf((char *)ap_config.ap.password, sizeof(ap_config.ap.password), "%s", ap_password);
     ap_config.ap.ssid_len = strlen(device_id);
 
     // Create a timer for retrying Wi-Fi connection attempts
@@ -140,7 +151,7 @@ void wifi_init(void)
         wifi_retry_timer_callback);
 
     // Start Wi-Fi in AP+STA mode if SSID is provided, otherwise start in AP-only mode
-    if (strlen(ssid) == 0)
+    if (strlen(wifi_ssid) == 0)
     {
         ESP_LOGW(TAG, "Wi-Fi SSID is empty! Running in AP-only server mode.");
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
@@ -154,7 +165,8 @@ void wifi_init(void)
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
 
-    ESP_LOGI(TAG, "WiFi started in %s mode.", (strlen(ssid) == 0) ? "AP" : "AP+STA");
+    ESP_LOGI(TAG, "WiFi started in %s mode.", (strlen(wifi_ssid) == 0) ? "AP" : "AP+STA");
+    return err;
 }
 
 static void wifi_retry_timer_callback(TimerHandle_t xTimer)

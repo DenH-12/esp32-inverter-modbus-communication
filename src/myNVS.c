@@ -1,6 +1,14 @@
 #include "myNVS.h"
 
-static const char *NVS_TAG = "NVS_CONFIG";
+static const char *TAG = "NVS_CONFIG";
+
+char ha_discovery_topic[128];
+uint8_t data_read_interval_s = 0;
+uint8_t sys_data_send_interval_s = 0;
+uint16_t webserver_port = 0;
+uint16_t mqtt_port = 0;
+
+size_t ha_discovery_topic_len = sizeof(ha_discovery_topic);
 
 void nvs_init(void)
 {
@@ -8,100 +16,64 @@ void nvs_init(void)
 
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
-        ESP_LOGW("NVS", "NVS partition is empty or corrupted! Erasing and retrying...");
+        ESP_LOGW(TAG, "NVS partition is empty or corrupted! Erasing and retrying...");
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
-
     ESP_ERROR_CHECK(ret);
-    ESP_LOGI("NVS", "NVS Flash successfully initialized!");
+
+    // Check reset settings flag
+    nvs_handle_t my_handle;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK)
+        return;
+
+    int8_t need_init = 1;
+    err = nvs_get_i8(my_handle, NVS_KEY_NEED_INIT, &need_init);
+
+    if (err == ESP_ERR_NVS_NOT_FOUND || need_init == 1)
+    {
+        ESP_LOGI(TAG, "Writing default settings...");
+        nvs_reset_saved_settings();
+    }
+
+    // read saved data from NVS
+    nvs_get_str(my_handle, NVS_DISCOVERY_TOPIC, ha_discovery_topic, &ha_discovery_topic_len);
+    nvs_get_u8(my_handle, NVS_KEY_DATA_SEC, &data_read_interval_s);
+    nvs_get_u8(my_handle, NVS_KEY_SYS_SEC, &sys_data_send_interval_s);
+    nvs_get_u16(my_handle, NVS_KEY_WEB_PORT, &webserver_port);
+    nvs_get_u16(my_handle, NVS_KEY_MQTT_PORT, &mqtt_port);
+
+    nvs_close(my_handle);
+
+    ESP_LOGI(TAG, "NVS Flash successfully initialized!");
 }
 
-void nvs_save_str(const char *key, const char *value)
+esp_err_t nvs_reset_saved_settings()
 {
     nvs_handle_t my_handle;
+    esp_err_t err;
 
-    if (nvs_open("storage", NVS_READWRITE, &my_handle) == ESP_OK)
-    {
-        esp_err_t err = nvs_set_str(my_handle, key, value);
-        if (err == ESP_OK)
-        {
-            nvs_commit(my_handle);
-            ESP_LOGI(NVS_TAG, "Key '%s' saved: %s", key, value);
-        }
-        else
-        {
-            ESP_LOGE(NVS_TAG, "Failed to set string for key '%s'", key);
-        }
-        nvs_close(my_handle);
-    }
-    else
-    {
-        ESP_LOGE(NVS_TAG, "Error opening NVS handle!");
-    }
-}
+    err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK)
+        return err;
 
-void nvs_save_int(const char *key, int32_t value)
-{
-    nvs_handle_t my_handle;
-
-    if (nvs_open("storage", NVS_READWRITE, &my_handle) == ESP_OK)
-    {
-        esp_err_t err = nvs_set_i32(my_handle, key, value);
-        if (err == ESP_OK)
-        {
-            nvs_commit(my_handle);
-            ESP_LOGI(NVS_TAG, "Key '%s' saved: %ld", key, value);
-        }
-        else
-        {
-            ESP_LOGE(NVS_TAG, "Failed to set int for key '%s'", key);
-        }
-        nvs_close(my_handle);
-    }
-    else
-    {
-        ESP_LOGE(NVS_TAG, "Error opening NVS handle!");
-    }
-}
-
-esp_err_t nvs_read_str(const char *key, char *out_buffer, size_t max_size)
-{
-    nvs_handle_t my_handle;
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &my_handle);
-
+    err = nvs_erase_all(my_handle);
     if (err != ESP_OK)
     {
+        nvs_close(my_handle);
         return err;
     }
 
-    size_t required_size = max_size;
-    err = nvs_get_str(my_handle, key, out_buffer, &required_size);
+    nvs_set_u16(my_handle, NVS_KEY_MQTT_PORT, 1883);
+    nvs_set_u8(my_handle, NVS_KEY_DATA_SEC, 3);
+    nvs_set_u8(my_handle, NVS_KEY_SYS_SEC, 5);
+    nvs_set_u16(my_handle, NVS_KEY_WEB_PORT, 80);
+    nvs_set_str(my_handle, NVS_DISCOVERY_TOPIC, "homeassistant");
+    nvs_set_i8(my_handle, NVS_KEY_NEED_INIT, 0);
+
+    err = nvs_commit(my_handle);
     nvs_close(my_handle);
-
-    if (err != ESP_OK)
-    {
-        ESP_LOGW(NVS_TAG, "Key '%s' not found", key);
-    }
-
-    return err;
-}
-
-esp_err_t nvs_read_int(const char *key, int32_t *out_value)
-{
-    nvs_handle_t my_handle;
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &my_handle);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-    err = nvs_get_i32(my_handle, key, out_value);
-    nvs_close(my_handle);
-
-    if (err != ESP_OK)
-    {
-        ESP_LOGW(NVS_TAG, "Key '%s' not found", key);
-    }
 
     return err;
 }

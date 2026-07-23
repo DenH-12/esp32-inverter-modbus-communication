@@ -4,8 +4,8 @@ static const char *TAG = "INVERTER";
 
 EventGroupHandle_t inverter_event_group;
 QueueHandle_t inv_cmd_queue;
-size_t free_heap;
-size_t min_heap_free;
+
+extern uint8_t data_read_interval_s;
 
 // Add blocks you want to read here
 static const modbus_block_t blocks_to_read[] = {
@@ -15,58 +15,59 @@ static const modbus_block_t blocks_to_read[] = {
 
 const reg_metadata_t inv_map[] = {
     // Real-time data (Block 200+)
-    {REG_GRID_VOLTAGE, "grid_voltage", 0.1f, false},
-    {REG_GRID_FREQ, "grid_freq", 0.01f, false},
-    {REG_GRID_POWER, "grid_power", 1.0f, false},
-    {REG_OUT_VOLTAGE, "out_voltage", 0.1f, false},
-    {REG_OUT_FREQ, "out_freq", 0.01f, false},
-    {REG_OUT_POWER, "out_power", 1.0f, true},
-    {REG_OUT_CURRENT, "out_current", 0.1f, false},
-    {REG_OUT_VA, "out_va", 1.0f, false},
-    {REG_BATT_VOLTAGE, "batt_voltage", 0.1f, false},
-    {REG_BATT_CURRENT, "batt_current", 0.1f, true},
-    {REG_BATT_POWER, "batt_power", 1.0f, true},
-    {REG_PV_VOLTAGE, "pv_voltage", 0.1f, false},
-    {REG_PV_CURRENT, "pv_current", 0.1f, false},
-    {REG_PV_POWER, "pv_power", 1.0f, false},
-    {REG_LOAD_PCT, "load_pct", 1.0f, false},
-    {REG_TEMP_DC, "temp_dc", 1.0f, true},
-    {REG_TEMP_INV, "temp_inv", 1.0f, true},
+    {ID_GRID_VOLTAGE,         REG_GRID_VOLTAGE,           0.1f,         false,      "grid_voltage"},
+    {ID_GRID_FREQUENCY,         REG_GRID_FREQ,           0.01f,         false,      "grid_freq"},
+    {ID_GRID_POWER,         REG_GRID_POWER,           1.0f,         false,      "grid_power"},
+    {ID_OUTPUT_VOLTAGE,         REG_OUT_VOLTAGE,           0.1f,         false,      "out_voltage"},
+    {ID_OUTPUT_FREQUENCY,         REG_OUT_FREQ,           0.01f,         false,      "out_freq"},
+    {ID_OUTPUT_POWER,         REG_OUT_POWER,           1.0f,         true,      "out_power"},
+    {ID_OUTPUT_CURRENT,         REG_OUT_CURRENT,           0.1f,         false,      "out_current"},
+    {ID_OUTPUT_VA,         REG_OUT_VA,                   1.0f,         false,      "out_va"},
+    {ID_BATTERY_VOLTAGE,         REG_BATT_VOLTAGE,           0.1f,         false,      "batt_voltage"},
+    {ID_BATTERY_CURRENT,         REG_BATT_CURRENT,           0.1f,         true,      "batt_current"},
+    {ID_BATTERY_POWER,         REG_BATT_POWER,           1.0f,         true,      "batt_power"},
+    {ID_PV_VOLTAGE,         REG_PV_VOLTAGE,           0.1f,         false,      "pv_voltage"},
+    {ID_PV_CURRENT,         REG_PV_CURRENT,           0.1f,         false,      "pv_current"},
+    {ID_PV_POWER,         REG_PV_POWER,           1.0f,         false,      "pv_power"},
+    {ID_LOAD_PERCENT,         REG_LOAD_PCT,           1.0f,         false,      "load_pct"},
+    {ID_TEMP_INV,         REG_TEMP_INV,           1.0f,         true,      "temp_inv"},
+    {ID_TEMP_DC,         REG_TEMP_DC,           1.0f,         true,      "temp_dc"},
 };
+const size_t inv_map_len = sizeof(inv_map) / sizeof(inv_map[0]);
 
 const reg_metadata_t inv_settings_map[] = {
     // Settings (Block 300+)
-    {REG_SET_OUT_PRIORITY, "set_output_priority", 1.0f, false},
-    {REG_SET_INPUT_V_RANGE, "set_input_voltage_range", 1.0f, false},
-    {REG_SET_BUZZER_MODE, "set_buzzer_mode", 1.0f, false},
-    {REG_SET_BEEP_SOURCE_INTRPT, "set_beep_source_intrpt", 1.0f, false},
-    {REG_SET_BACKLIGHT, "set_backlight", 1.0f, false},
-    {REG_SET_RETURN_DEFLT_DISPLAY, "set_return_default_display", 1.0f, false},
-    {REG_SET_PWR_SAVE_MODE, "set_pwr_save_mode", 1.0f, false},
-    {REG_SET_OVERLOAD_RESTART, "set_overload_restart", 1.0f, false},
-    {REG_SET_OVERTEMP_RESTART, "set_overtemp_restart", 1.0f, false},
-    {REG_SET_OVERLOAD_BYPASS, "set_overload_bypass", 1.0f, false},
-    {REG_SET_OUT_V, "set_out_voltage", 0.1f, false},
-    {REG_SET_OUT_F, "set_out_frequency", 0.01f, false},
-    {REG_SET_BATT_TYPE, "set_batt_type", 1.0f, false},
-    {REG_SET_BATT_DC_PROTECT_V, "set_batt_dc_protect_voltage", 0.1f, false},
-    {REG_SET_BATT_BULK_V, "set_batt_bulk_voltage", 0.1f, false},
-    {REG_SET_BATT_FLOAT_V, "set_batt_float_voltage", 0.1f, false},
-    {REG_SET_BATT_RECOVERY_V, "set_batt_recovery_voltage", 0.1f, false},
-    {REG_SET_BATT_PROTECTION_V, "set_batt_protection_voltage", 0.1f, false},
-    {REG_SET_BATT_CUTOFF_V, "set_batt_cutoff_voltage", 0.1f, false},
-    {REG_SET_BATT_CV_FLOAT_TIME, "set_batt_cv_float_time", 1.0f, false},
-    {REG_SET_BATT_CHG_PRIORITY, "set_batt_chg_priority", 1.0f, false},
-    {REG_SET_BATT_MAX_CHG_A, "set_batt_max_chg_a", 0.1f, false},
-    {REG_SET_BATT_MAX_AC_CHG_A, "set_batt_max_ac_chg_current", 0.1f, false},
-    {REG_SET_BATT_EQ_CHG_V, "set_batt_eq_chg_voltage", 0.1f, false},
-    {REG_SET_BATT_EQ_CHG_TIME, "set_batt_eq_chg_time", 1.0f, false},
-    {REG_SET_BATT_EQ_TIMEOUT, "set_batt_eq_timeout", 1.0f, false},
-    {REG_SET_BATT_EQ_INTERVAL, "set_batt_eq_interval", 1.0f, false},
-    {REG_SET_BATT_EQ_MODE, "set_batt_eq_mode", 1.0f, false},
-    {REG_SET_BATT_PROTECTION_SOC, "set_batt_protection_soc", 1.0f, false},
-    {REG_SET_BATT_RECOVERY_SOC, "set_batt_recovery_soc", 1.0f, false},
-    {REG_SET_BATT_CUTOFF_SOC, "set_batt_cut_off_soc", 1.0f, false},
+    { ID_OUTPUT_PRIORITY,                 REG_SET_OUT_PRIORITY,             1.0f,  false, "set_output_priority",},
+    { ID_INPUT_VOLTAGE_RANGE,            REG_SET_INPUT_V_RANGE,            1.0f,  false, "set_input_voltage_range",},
+    { ID_BUZZER_MODE,                    REG_SET_BUZZER_MODE,              1.0f,  false, "set_buzzer_mode",},
+    { ID_BEEP_SOURCE_INTERRUPT,          REG_SET_BEEP_SOURCE_INTRPT,       1.0f,  false, "set_beep_source_intrpt",},
+    { ID_BACKLIGHT,                      REG_SET_BACKLIGHT,                1.0f,  false, "set_backlight",},
+    { ID_RETURN_DEFAULT_DISPLAY,         REG_SET_RETURN_DEFLT_DISPLAY,     1.0f,  false, "set_return_default_display",},
+    { ID_POWER_SAVE_MODE,                REG_SET_PWR_SAVE_MODE,            1.0f,  false, "set_pwr_save_mode",},
+    { ID_OVERLOAD_RESTART,               REG_SET_OVERLOAD_RESTART,         1.0f,  false, "set_overload_restart",},
+    { ID_OVERTEMP_RESTART,               REG_SET_OVERTEMP_RESTART,         1.0f,  false, "set_overtemp_restart",},
+    { ID_OVERLOAD_BYPASS,                REG_SET_OVERLOAD_BYPASS,          1.0f,  false, "set_overload_bypass",},
+    { ID_SET_OUTPUT_VOLTAGE,             REG_SET_OUT_V,                    0.1f,  false, "set_out_voltage",},
+    { ID_SET_OUTPUT_FREQUENCY,           REG_SET_OUT_F,                    0.01f, false, "set_out_frequency",},
+    { ID_BATTERY_TYPE,                   REG_SET_BATT_TYPE,                1.0f,  false, "set_batt_type",},
+    { ID_BATTERY_DC_PROTECT_VOLTAGE,       REG_SET_BATT_DC_PROTECT_V,      0.1f, false, "set_batt_dc_protect_voltage",},
+    { ID_BATTERY_BULK_VOLTAGE,           REG_SET_BATT_BULK_V,              0.1f,  false, "set_batt_bulk_voltage",},
+    { ID_BATTERY_FLOAT_VOLTAGE,          REG_SET_BATT_FLOAT_V,             0.1f,  false, "set_batt_float_voltage",},
+    { ID_BATTERY_RECOVERY_VOLTAGE,       REG_SET_BATT_RECOVERY_V,          0.1f,  false, "set_batt_recovery_voltage",},
+    { ID_BATTERY_PROTECTION_VOLTAGE,       REG_SET_BATT_PROTECTION_V,     0.1f,  false, "set_batt_protection_voltage",},
+    { ID_BATTERY_CUTOFF_VOLTAGE,         REG_SET_BATT_CUTOFF_V,            0.1f,  false, "set_batt_cutoff_voltage",},
+    { ID_BATTERY_CV_FLOAT_TIME,          REG_SET_BATT_CV_FLOAT_TIME,       1.0f,  false, "set_batt_cv_float_time",},
+    { ID_BATTERY_CHARGE_PRIORITY,        REG_SET_BATT_CHG_PRIORITY,        1.0f,  false, "set_batt_chg_priority",},
+    { ID_BATTERY_MAX_CHARGE_CURRENT,       REG_SET_BATT_MAX_CHG_A,        0.1f,  false, "set_batt_max_chg_a",},
+    { ID_BATTERY_MAX_AC_CHARGE_CURRENT,       REG_SET_BATT_MAX_AC_CHG_A,   0.1f, false, "set_batt_max_ac_chg_current",},
+    { ID_BATTERY_EQUALIZATION_CHARGE_VOLTAGE,       REG_SET_BATT_EQ_CHG_V,   0.1f, false, "set_batt_eq_chg_voltage",},
+    { ID_BATTERY_EQUALIZATION_CHARGE_TIME,       REG_SET_BATT_EQ_CHG_TIME,   1.0f, false, "set_batt_eq_chg_time",},
+    { ID_BATTERY_EQUALIZATION_TIMEOUT,       REG_SET_BATT_EQ_TIMEOUT,        1.0f, false, "set_batt_eq_timeout",},
+    { ID_BATTERY_EQUALIZATION_INTERVAL,       REG_SET_BATT_EQ_INTERVAL,       1.0f, false, "set_batt_eq_interval",},
+    { ID_BATTERY_EQUALIZATION_MODE,       REG_SET_BATT_EQ_MODE,            1.0f, false, "set_batt_eq_mode",},
+    { ID_BATTERY_PROTECTION_SOC,        REG_SET_BATT_PROTECTION_SOC,     1.0f, false, "set_batt_protection_soc",},
+    { ID_BATTERY_RECOVERY_SOC,          REG_SET_BATT_RECOVERY_SOC,       1.0f, false, "set_batt_recovery_soc",},
+    { ID_BATTERY_CUTOFF_SOC,            REG_SET_BATT_CUTOFF_SOC,         1.0f, false, "set_batt_cut_off_soc",},
 };
 const size_t inv_settings_map_len = sizeof(inv_settings_map) / sizeof(inv_settings_map[0]);
 
@@ -90,9 +91,6 @@ void sniffer_init()
     ESP_ERROR_CHECK(uart_driver_install(SNIFFER_PORT_NUM, SNIFFER_BUF_SIZE, 0, 0, NULL, 0));
 
     inv_cmd_queue = xQueueCreate(10, sizeof(inv_cmd_t));
-
-    ESP_LOGI(TAG, "MQTT Stats Topic: %s", mqtt_stats_topic);
-    ESP_LOGI(TAG, "MQTT Settings Topic: %s", mqtt_settings_topic);
 }
 
 void inverter_read_task(void *pvParameters)
@@ -105,7 +103,7 @@ void inverter_read_task(void *pvParameters)
         // Check WiFi connection before reading
         if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_WIFI_CONNECTED))
         {
-            vTaskDelay(pdMS_TO_TICKS(5000));
+            vTaskDelay(pdMS_TO_TICKS(10000));
             continue;
         }
 
@@ -113,7 +111,7 @@ void inverter_read_task(void *pvParameters)
         if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED))
         {
             ESP_LOGW(TAG, "MQTT not connected, skipping read cycle wait 5 seconds...");
-            vTaskDelay(pdMS_TO_TICKS(5000));
+            vTaskDelay(pdMS_TO_TICKS(10000));
             continue;
         }
         // Check if there are any pending commands to write before reading
@@ -123,8 +121,6 @@ void inverter_read_task(void *pvParameters)
             xEventGroupSetBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS); // Trigger a settings refresh after writing
             vTaskDelay(pdMS_TO_TICKS(100));                                       // Short delay after write before next action
         }
-
-        update_system_status();
 
         for (int i = 0; i < sizeof(blocks_to_read) / sizeof(modbus_block_t); i++)
         {
@@ -140,7 +136,7 @@ void inverter_read_task(void *pvParameters)
 
             vTaskDelay(pdMS_TO_TICKS(100)); // Short delay between block reads
         }
-        vTaskDelay(pdMS_TO_TICKS(SNIFFER_READ_INTERVAL_MS)); // Delay before next full read cycle
+        vTaskDelay(pdMS_TO_TICKS(data_read_interval_s * 1000)); // Delay before next full read cycle
     }
 }
 
@@ -169,7 +165,7 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
                     value = GET_REG(meta->reg) * meta->multiplier;
                 }
                 char line[64];
-                snprintf(line, sizeof(line), "\"%s\": %g,", meta->name, value);
+                snprintf(line, sizeof(line), "\"%s\": %g,", meta->name_id, value);
                 strncat(json_string, line, sizeof(json_string) - strlen(json_string) - 1);
             }
             // Remove trailing comma
@@ -179,7 +175,7 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
             }
             strncat(json_string, "}", sizeof(json_string) - strlen(json_string) - 1); // End JSON
 
-            mqtt_publish_topic(mqtt_stats_topic, json_string);
+            mqtt_publish_topic(mqtt_stats_topic, json_string, false);
         }
     }
     else if (start_addr == 300)
@@ -204,7 +200,7 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
                     value = GET_REG_300(meta->reg) * meta->multiplier;
                 }
                 char line[64];
-                snprintf(line, sizeof(line), "\"%s\": %g,", meta->name, value);
+                snprintf(line, sizeof(line), "\"%s\": %g,", meta->name_id, value);
                 strncat(json_string, line, sizeof(json_string) - strlen(json_string) - 1);
             }
             // Remove trailing comma
@@ -214,7 +210,7 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
             }
             strncat(json_string, "}", sizeof(json_string) - strlen(json_string) - 1); // End JSON
 
-            mqtt_publish_topic(mqtt_settings_topic, json_string);
+            mqtt_publish_topic(mqtt_settings_topic, json_string, false);
         }
     }
 }
@@ -314,20 +310,6 @@ esp_err_t inverter_write_register(uint16_t reg_addr, uint16_t value)
     }
 }
 
-void update_system_status()
-{
-    // System status update
-    uptime_seconds = xTaskGetTickCount() * portTICK_PERIOD_MS / 1000;
-    free_heap = esp_get_free_heap_size();
-    min_heap_free = esp_get_minimum_free_heap_size();
-
-    char json_string[512];
-
-    snprintf(json_string, sizeof(json_string), "{\"uptime_seconds\": %llu, \"last_reset_reason\": %d, \"free_heap\": %lu, \"min_heap_free\": %lu}",
-             uptime_seconds, last_reset_reason, free_heap, min_heap_free);
-
-    mqtt_publish_topic(mqtt_system_topic, json_string);
-}
 
 // void sniffer_task(void *arg)
 // {

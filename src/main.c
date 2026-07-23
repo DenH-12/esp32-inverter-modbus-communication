@@ -8,15 +8,11 @@
 #include "myNVS.h"
 
 static const char *TAG = "APP";
-uint64_t uptime_seconds;
-esp_reset_reason_t last_reset_reason;
 
 /* -------- MAIN -------- */
 void app_main(void)
 {
     vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow logging to initialize
-    uptime_seconds = 0;
-    last_reset_reason = esp_reset_reason();
 
     nvs_init();
     wifi_init();
