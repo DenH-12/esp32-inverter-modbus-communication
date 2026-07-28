@@ -95,22 +95,21 @@ void sniffer_init()
 
 void inverter_read_task(void *pvParameters)
 {
+    if (data_read_interval_s == 0)
+    {
+        ESP_LOGW(TAG, "Delay is 0, deleting task");
+        vTaskDelete(NULL); // Exit the task if readding data delay = 0
+    }
+    
     const modbus_block_t settings_block = {300, 51, "SETTINGS_DATA"};
     inv_cmd_t cmd;
 
     while (1)
     {
-        // Check WiFi connection before reading
-        if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_WIFI_CONNECTED))
-        {
-            vTaskDelay(pdMS_TO_TICKS(10000));
-            continue;
-        }
-
         // Check MQTT connection before reading
         if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED))
         {
-            ESP_LOGW(TAG, "MQTT not connected, skipping read cycle wait 5 seconds...");
+            ESP_LOGW(TAG, "MQTT not connected, skipping read cycle wait 10 seconds...");
             vTaskDelay(pdMS_TO_TICKS(10000));
             continue;
         }
@@ -147,7 +146,7 @@ void parse_inverter_data(uint16_t start_addr, uint8_t *data)
 #define GET_REG(addr) ((data[(addr - 200) * 2] << 8) | data[(addr - 200) * 2 + 1])
         if (SNIFFER_PUBLISH_MQTT)
         {
-            char json_string[512];
+            char json_string[1024];
             json_string[0] = '{';  // Start JSON
             json_string[1] = '\0'; // set terminator, so strncat works
 

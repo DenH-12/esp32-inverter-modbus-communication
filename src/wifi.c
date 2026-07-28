@@ -10,9 +10,9 @@ char wifi_ssid[33] = {0};
 char wifi_password[64] = {0};
 char ap_password[64] = "87654321";
 
-size_t wifi_ssid_len = sizeof(wifi_ssid);
-size_t wifi_password_len = sizeof(wifi_password);
-size_t ap_password_len = sizeof(ap_password);
+static TimerHandle_t wifi_retry_timer = NULL;
+static void wifi_retry_timer_callback(TimerHandle_t xTimer);
+static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
 static void init_device_id(void)
 {
@@ -75,9 +75,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
             xTimerStop(wifi_retry_timer, 0);
         }
 
-        mqtt_init();
-        webserver_stop();
-        webserver_init();
     }
 
     // Handle events for clients connecting to the ESP32 AP
@@ -85,8 +82,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
         ESP_LOGI(TAG, "Client connected to ESP32 AP, MAC: " MACSTR, MAC2STR(event->mac));
-
-        webserver_init();
     }
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED)
@@ -109,8 +104,10 @@ esp_err_t wifi_init(void)
         return err;
     }
     // Read saved wifi config
-    nvs_get_str(my_handle, NVS_KEY_WIFI_SSID, wifi_ssid, &wifi_ssid_len);
-    nvs_get_str(my_handle, NVS_KEY_WIFI_PASS, wifi_password, &wifi_password_len);
+    size_t len = sizeof(wifi_ssid);
+    nvs_get_str(my_handle, NVS_KEY_WIFI_SSID, wifi_ssid, &len);
+    len = sizeof(wifi_password);
+    nvs_get_str(my_handle, NVS_KEY_WIFI_PASS, wifi_password, &len);
 
     nvs_close(my_handle);
 
@@ -130,12 +127,12 @@ esp_err_t wifi_init(void)
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
     wifi_config_t wifi_config = {.sta = {0}};
-    strncpy((char *)wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_config.sta.ssid));
-    strncpy((char *)wifi_config.sta.password, wifi_password, sizeof(wifi_config.sta.password));
+    strlcpy((char *)wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_config.sta.ssid));
+    strlcpy((char *)wifi_config.sta.password, wifi_password, sizeof(wifi_config.sta.password));
 
     wifi_config_t ap_config = {
         .ap = {
-            .channel = 1,
+            .channel = 0,
             .max_connection = 4,
             .authmode = WIFI_AUTH_WPA2_PSK}};
     snprintf((char *)ap_config.ap.ssid, sizeof(ap_config.ap.ssid), "%s", device_id);

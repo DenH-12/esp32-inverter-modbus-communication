@@ -6,15 +6,11 @@ const char *TAG = "WEB";
 
 extern const reg_metadata_t inv_map[];
 extern char ha_discovery_topic[];
-extern char wifi_ssid[];
-extern char wifi_password[];
 extern uint16_t webserver_port;
 extern uint16_t mqtt_port;
 extern uint8_t data_read_interval_s;
 extern uint8_t sys_data_send_interval_s;
-extern size_t wifi_ssid_len;
-extern size_t wifi_password_len;
-extern size_t ha_discovery_topic_len;
+
 
 // Assign URI handlers to specific URIs and methods
 static httpd_uri_t status_get_uri = {
@@ -62,7 +58,10 @@ httpd_handle_t server = NULL;
 httpd_handle_t webserver_init(void) 
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.stack_size = 8192;
     config.server_port = webserver_port; // Set the server port
+    config.lru_purge_enable = true;
+    config.max_open_sockets = 5;
 
     if (httpd_start(&server, &config) == ESP_OK)
     {
@@ -76,6 +75,25 @@ httpd_handle_t webserver_init(void)
     }
     ESP_LOGI(TAG, "Webserver started on port %d", config.server_port);
     return server;
+}
+
+static bool get_json_int(const cJSON *root, const char *key, int *out_val)
+{
+    cJSON *item = cJSON_GetObjectItem(root, key);
+    if (!item)
+        return false;
+
+    if (cJSON_IsNumber(item))
+    {
+        *out_val = item->valueint;
+        return true;
+    }
+    else if (cJSON_IsString(item) && item->valuestring != NULL)
+    {
+        *out_val = atoi(item->valuestring);
+        return true;
+    }
+    return false;
 }
 
 esp_err_t webserver_stop(void)
@@ -131,21 +149,20 @@ esp_err_t status_get_handler(httpd_req_t *req)
 esp_err_t settings_post_handler(httpd_req_t *req)
 {
     // Read the incoming JSON data from the request
-    char content[500] = {0};
+    char content[1024] = {0};
 
     size_t recv_size = (req->content_len < sizeof(content) - 1) ? req->content_len : sizeof(content) - 1;
-    httpd_req_recv(req, content, recv_size);
 
-    ESP_LOGI(TAG, "Frontend sent: %s", content);
-
-    nvs_handle_t my_handle;
-
-    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &my_handle);
-    if (err != ESP_OK)
+    int ret = httpd_req_recv(req, content, recv_size);
+    if (ret <= 0)
     {
-        ESP_LOGE(TAG, "Error opening NVS handle: %s", esp_err_to_name(err));
-        return err;
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+        {
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
     }
+    ESP_LOGI(TAG, "Frontend sent: %s", content);
 
     cJSON *root = cJSON_Parse(content);
     if (root == NULL)
@@ -155,77 +172,62 @@ esp_err_t settings_post_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-   
-    // Save the received configuration to NVS
-    cJSON *ssid = cJSON_GetObjectItem(root, "wifiSsid");
-    if (cJSON_IsString(ssid) && (ssid->valuestring != NULL))
+    nvs_handle_t my_handle;
+
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK)
     {
+        cJSON_Delete(root);
+        ESP_LOGE(TAG, "Error opening NVS handle: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    // Save the received configuration to NVS
+    // Save Strings
+    cJSON *ssid = cJSON_GetObjectItem(root, "wifiSsid");
+    if (cJSON_IsString(ssid) && (ssid->valuestring != NULL)) {
         nvs_set_str(my_handle, NVS_KEY_WIFI_SSID, ssid->valuestring);
     }
     cJSON *password = cJSON_GetObjectItem(root, "wifiPassword");
-    if (cJSON_IsString(password) && (password->valuestring != NULL))
-    {
+    if (cJSON_IsString(password) && (password->valuestring != NULL)) {
         nvs_set_str(my_handle, NVS_KEY_WIFI_PASS, password->valuestring);
     }
     cJSON *mqtt_broker = cJSON_GetObjectItem(root, "mqttBroker");
-    if (cJSON_IsString(mqtt_broker) && (mqtt_broker->valuestring != NULL))
-    {
+    if (cJSON_IsString(mqtt_broker) && (mqtt_broker->valuestring != NULL)) {
         nvs_set_str(my_handle, NVS_KEY_MQTT_HOST, mqtt_broker->valuestring);
     }
-    cJSON *mqtt_port = cJSON_GetObjectItem(root, "mqttPort");
-    if (mqtt_port != NULL)
-    {
-        int32_t port_value = (int32_t)atoi(mqtt_port->valuestring);
-
-        nvs_set_u16(my_handle, NVS_KEY_MQTT_PORT, port_value);
-    }
     cJSON *mqtt_username = cJSON_GetObjectItem(root, "mqttUsername");
-    if (cJSON_IsString(mqtt_username) && (mqtt_username->valuestring != NULL))
-    {
+    if (cJSON_IsString(mqtt_username) && (mqtt_username->valuestring != NULL)) {
         nvs_set_str(my_handle, NVS_KEY_MQTT_USER, mqtt_username->valuestring);
     }
     cJSON *mqtt_password = cJSON_GetObjectItem(root, "mqttPassword");
-    if (cJSON_IsString(mqtt_password) && (mqtt_password->valuestring != NULL))
-    {
+    if (cJSON_IsString(mqtt_password) && (mqtt_password->valuestring != NULL)) {
         nvs_set_str(my_handle, NVS_KEY_MQTT_PASS, mqtt_password->valuestring);
     }
-    cJSON *data_read_interval = cJSON_GetObjectItem(root, "dataReadInterval");
-    if (cJSON_IsString(data_read_interval) && (data_read_interval->valuestring != NULL))
-    {
-        int val = atoi(data_read_interval->valuestring);
+    // Save Integers
+   int val = 0;
+    if (get_json_int(root, "mqttPort", &val) && val > 0 && val <= 65535) {
+        nvs_set_u16(my_handle, NVS_KEY_MQTT_PORT, (uint16_t)val);
+    }
+
+    if (get_json_int(root, "dataReadInterval", &val) && val >= 0 && val <= 255) {
         nvs_set_u8(my_handle, NVS_KEY_DATA_SEC, (uint8_t)val);
     }
-    cJSON *sys_data_send_interval = cJSON_GetObjectItem(root, "sysDataSendInterval");
-    if (cJSON_IsString(sys_data_send_interval) && (sys_data_send_interval->valuestring != NULL))
-    {
-        int val = atoi(sys_data_send_interval->valuestring);
+
+    if (get_json_int(root, "sysDataSendInterval", &val) && val >= 0 && val <= 255) {
         nvs_set_u8(my_handle, NVS_KEY_SYS_SEC, (uint8_t)val);
     }
-    cJSON *web_port = cJSON_GetObjectItem(root, "webServerPort");
-    if (web_port != NULL)
-    {
-        int parsed_port = -1;
 
-        if (cJSON_IsNumber(web_port))
-        {
-            parsed_port = web_port->valueint;
-        }
-        else if(cJSON_IsString(web_port) && web_port->valuestring != NULL)
-        {
-            parsed_port = atoi(web_port->valuestring);
-        }
-
-        if (parsed_port >= 80 && parsed_port <= 65535)
-        {
-            webserver_port = (uint16_t)parsed_port;
-            nvs_set_u16(my_handle, NVS_KEY_WEB_PORT, webserver_port);
-        }
-        else
-        {
+    if (get_json_int(root, "webServerPort", &val)) {
+        if (val >= 80 && val <= 65535) {
+            webserver_port = (uint16_t)val;
+        } else {
             webserver_port = 80;
         }
+        nvs_set_u16(my_handle, NVS_KEY_WEB_PORT, webserver_port);
     }
 
+    nvs_commit(my_handle);
     nvs_close(my_handle);
 
     // Clean up the cJSON object
@@ -246,11 +248,6 @@ esp_err_t settings_get_handler(httpd_req_t *req)
     char mqtt_username[32] = {0};
     char mqtt_password[32] = {0};
 
-
-    size_t mqtt_broker_len = sizeof(mqtt_broker);
-    size_t mqtt_username_len = sizeof(mqtt_username);
-    size_t mqtt_password_len = sizeof(mqtt_password);
-
     nvs_handle_t my_handle;
     esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &my_handle);
 
@@ -260,13 +257,19 @@ esp_err_t settings_get_handler(httpd_req_t *req)
         return err;
     }
 
-    nvs_get_str(my_handle, NVS_KEY_WIFI_SSID, wifi_ssid, &wifi_ssid_len);
-    nvs_get_str(my_handle, NVS_KEY_WIFI_PASS, wifi_password, &wifi_password_len);
-    nvs_get_str(my_handle, NVS_KEY_MQTT_HOST, mqtt_broker, &mqtt_broker_len);
+    size_t len = sizeof(wifi_ssid);
+    nvs_get_str(my_handle, NVS_KEY_WIFI_SSID, wifi_ssid, &len);
+    len = sizeof(wifi_password);
+    nvs_get_str(my_handle, NVS_KEY_WIFI_PASS, wifi_password, &len);
+    len = sizeof(mqtt_broker);
+    nvs_get_str(my_handle, NVS_KEY_MQTT_HOST, mqtt_broker, &len);
     nvs_get_u16(my_handle, NVS_KEY_MQTT_PORT, &mqtt_port);
-    nvs_get_str(my_handle, NVS_KEY_MQTT_USER, mqtt_username, &mqtt_username_len);
-    nvs_get_str(my_handle, NVS_KEY_MQTT_PASS, mqtt_password, &mqtt_password_len);
-    nvs_get_str(my_handle, NVS_DISCOVERY_TOPIC, ha_discovery_topic, &ha_discovery_topic_len);
+    len = sizeof(mqtt_username);
+    nvs_get_str(my_handle, NVS_KEY_MQTT_USER, mqtt_username, &len);
+    len = sizeof(mqtt_password);
+    nvs_get_str(my_handle, NVS_KEY_MQTT_PASS, mqtt_password, &len);
+    len = sizeof(ha_discovery_topic);
+    nvs_get_str(my_handle, NVS_DISCOVERY_TOPIC, ha_discovery_topic, &len);
 
     nvs_close(my_handle);
 
@@ -316,11 +319,28 @@ esp_err_t reboot_post_handler(httpd_req_t *req)
 
 esp_err_t ha_discovery_post_handler(httpd_req_t *req)
 {
+    // Check MQTT connection before reading
+    if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED))
+    {
+        ESP_LOGW(TAG, "Cannot run HA discovery: MQTT not connected");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "MQTT not connected");
+        return ESP_FAIL;
+    }
+
     // Read the incoming JSON data from the request
-    char content[500] = {0};
+    char content[1024] = {0};
 
     size_t recv_size = (req->content_len < sizeof(content) - 1) ? req->content_len : sizeof(content) - 1;
-    httpd_req_recv(req, content, recv_size);
+
+    int ret = httpd_req_recv(req, content, recv_size);
+    if (ret <= 0)
+    {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+        {
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
+    }
 
     cJSON *root = cJSON_Parse(content);
     if (root == NULL)
@@ -338,6 +358,7 @@ esp_err_t ha_discovery_post_handler(httpd_req_t *req)
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error opening NVS handle!");
+        cJSON_Delete(root);
         return err;
     }
 
@@ -346,7 +367,8 @@ esp_err_t ha_discovery_post_handler(httpd_req_t *req)
     if (cJSON_IsString(ha_discovery_topic_json) && (ha_discovery_topic_json->valuestring != NULL))
     {
         nvs_set_str(my_handle, NVS_DISCOVERY_TOPIC, ha_discovery_topic_json->valuestring);
-        snprintf(ha_discovery_topic, ha_discovery_topic_len, "%s", ha_discovery_topic_json->valuestring);
+        size_t len = sizeof(ha_discovery_topic);
+        snprintf(ha_discovery_topic, len, "%s", ha_discovery_topic_json->valuestring);
     }
     nvs_commit(my_handle);
 

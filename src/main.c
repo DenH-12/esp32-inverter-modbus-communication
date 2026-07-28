@@ -16,11 +16,14 @@ void app_main(void)
 
     nvs_init();
     wifi_init();
+    mqtt_init();
+    webserver_init();
     sniffer_init();
 
     ESP_LOGI(TAG, "System ready");
 
     // Tasks
     xTaskCreate(inverter_read_task, "inverter_read_task", 8192, NULL, 5, NULL);
+    xTaskCreate(update_system_info_task, "update_system_info_task", 4096, NULL, 5, NULL);
     // xTaskCreate(sniffer_task, "modbus_scan_task", 4096, NULL, 5, NULL);
 }

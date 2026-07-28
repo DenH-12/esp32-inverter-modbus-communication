@@ -8,10 +8,6 @@ static char mqtt_password[32] = {0};
 static uint16_t mqtt_port = 1883;
 static char subscribe_topic[64] = {0};
 
-size_t mqtt_broker_uri_len = sizeof(mqtt_broker_uri);
-size_t mqtt_username_len = sizeof(mqtt_username);
-size_t mqtt_password_len = sizeof(mqtt_password);
-
 char mqtt_will_topic[64] = {0};
 char mqtt_stats_topic[64] = {0};
 char mqtt_settings_topic[64] = {0};
@@ -28,7 +24,6 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT connected");
-        xTaskCreate(update_system_info_task, "update_system_info_task", 4096, NULL, 5, NULL);
         esp_mqtt_client_publish(client, mqtt_will_topic, "online", 0, 1, 1);
         esp_mqtt_client_subscribe(client, subscribe_topic, 0);
         xEventGroupSetBits(inverter_event_group, INV_EVENT_MQTT_CONNECTED);
@@ -40,8 +35,8 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         break;
 
     case MQTT_EVENT_DATA:
-        char topic[64];
-        char data[16];
+        char topic[128];
+        char data[64];
         snprintf(topic, sizeof(topic), "%.*s", event->topic_len, event->topic);
         snprintf(data, sizeof(data), "%.*s", event->data_len, event->data);
 
@@ -72,8 +67,10 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
                     uint16_t raw_value = (uint16_t)(value / meta->multiplier);
 
                     inv_cmd_t cmd = {.reg = meta->reg, .value = raw_value};
-                    xQueueSend(inv_cmd_queue, &cmd, portMAX_DELAY);
-
+                    if (xQueueSend(inv_cmd_queue, &cmd, pdMS_TO_TICKS(100)) != pdPASS)
+                    {
+                        ESP_LOGE(TAG, "Failed to send cmd, queue full");
+                    }
                     ESP_LOGI(TAG, "Setting %s to: %d", meta->name_id, raw_value);
 
                     break;
@@ -87,6 +84,13 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 
 esp_err_t mqtt_init(void)
 {
+    if (client != NULL)
+    {
+        esp_mqtt_client_stop(client);
+        esp_mqtt_client_destroy(client);
+        client = NULL;
+    }
+
     // Read MQTT settings from NVS
     nvs_handle_t my_handle;
     esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &my_handle);
@@ -95,9 +99,12 @@ esp_err_t mqtt_init(void)
         return err;
     }
 
-    nvs_get_str(my_handle, NVS_KEY_MQTT_HOST, mqtt_broker_uri, &mqtt_broker_uri_len);
-    nvs_get_str(my_handle, NVS_KEY_MQTT_USER, mqtt_username, &mqtt_username_len);
-    nvs_get_str(my_handle, NVS_KEY_MQTT_PASS, mqtt_password, &mqtt_password_len);
+    size_t len = sizeof(mqtt_broker_uri);
+    nvs_get_str(my_handle, NVS_KEY_MQTT_HOST, mqtt_broker_uri, &len);
+    len = sizeof(mqtt_username);
+    nvs_get_str(my_handle, NVS_KEY_MQTT_USER, mqtt_username, &len);
+    len = sizeof(mqtt_password);
+    nvs_get_str(my_handle, NVS_KEY_MQTT_PASS, mqtt_password, &len);
     nvs_get_u16(my_handle, NVS_KEY_MQTT_PORT, &mqtt_port);
 
     nvs_close(my_handle);
@@ -107,7 +114,7 @@ esp_err_t mqtt_init(void)
     snprintf(mqtt_stats_topic, sizeof(mqtt_stats_topic), "%s/stats", device_id);
     snprintf(mqtt_settings_topic, sizeof(mqtt_settings_topic), "%s/settings", device_id);
     snprintf(mqtt_system_realtime_topic, sizeof(mqtt_system_realtime_topic), "%s/system_realtime", device_id);
-    snprintf(mqtt_system_topic, sizeof(mqtt_system_realtime_topic), "%s/system", device_id);
+    snprintf(mqtt_system_topic, sizeof(mqtt_system_topic), "%s/system", device_id);
     snprintf(mqtt_cmnd_topic, sizeof(mqtt_cmnd_topic), "%s/cmnd", device_id);
     snprintf(subscribe_topic, sizeof(subscribe_topic), "%s/#", mqtt_cmnd_topic);
 
@@ -122,6 +129,7 @@ esp_err_t mqtt_init(void)
         .broker.address.uri = mqtt_broker_uri,
         .credentials.client_id = device_id,
         .network.timeout_ms = 10000,
+        .network.reconnect_timeout_ms = 10000,
         .session.keepalive = 30,
         .session.last_will = {
             .topic = mqtt_will_topic,
@@ -148,6 +156,8 @@ esp_err_t mqtt_init(void)
     client = esp_mqtt_client_init(&cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_mqtt_client_start(client);
+    
+    return ESP_OK;
 }
 
 int mqtt_publish_topic(const char *topic, const char *payload, bool retain)

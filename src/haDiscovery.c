@@ -150,22 +150,25 @@ size_t selects_count = sizeof(selects) / sizeof(selects[0]);
 
 void ha_discovery_publish_device_info()
 {
-    char topic[128];
-    char value_template[96] = {0};
+    char topic[256];
     char unique_id[64];
     char configuration_url[64];
 
     cJSON *root = cJSON_CreateObject();
+    if (!root) return;
+
     cJSON *device = cJSON_CreateObject();
     cJSON *identifiers = cJSON_CreateArray();
 
     snprintf(unique_id, sizeof(unique_id), "%s_%s", device_id_lower, "device_info");
     snprintf(configuration_url, sizeof(configuration_url), "http://%s:%u", wifi_ip, webserver_port);
-    snprintf(topic, sizeof(topic), "%s/sensor/%s/config", ha_discovery_topic, unique_id);
+    snprintf(topic, sizeof(topic), "%s/binary_sensor/%s/config", ha_discovery_topic, unique_id);
 
     cJSON_AddStringToObject(root, "name", "Status");
     cJSON_AddStringToObject(root, "unique_id", unique_id);
     cJSON_AddStringToObject(root, "state_topic", mqtt_will_topic);
+    cJSON_AddStringToObject(root, "payload_on", "online");
+    cJSON_AddStringToObject(root, "payload_off", "offline");
     cJSON_AddStringToObject(root, "entity_category", "diagnostic");
 
     cJSON_AddItemToArray(identifiers, cJSON_CreateString(device_id));
@@ -191,8 +194,8 @@ void ha_discovery_publish_device_info()
 void ha_discovery_publish_sensor(ha_sensor_t *sensor)
 {
     if (!sensor) return;
-    
-    char topic[128];
+
+    char topic[256];
     char value_template[96] = {0};
     char unique_id[64];
 
@@ -233,7 +236,7 @@ void ha_discovery_publish_sys_sensor(ha_sys_sensor_t *sensor)
     if (!sensor)
         return;
 
-    char topic[128];
+    char topic[256];
     char value_template[96] = {0};
     char unique_id[64];
 
@@ -274,7 +277,7 @@ void ha_discovery_publish_number(ha_number_t *number)
     if (!number)
         return;
 
-    char topic[128];
+    char topic[256];
     char value_template[96] = {0};
     char command_topic[128];
     char unique_id[64];
@@ -319,7 +322,7 @@ void ha_discovery_publish_select(ha_select_t *select)
     if (!select)
         return;
 
-    char topic[128];
+    char topic[256];
     char command_topic[128];
     char value_template[256];
     char command_template[256];
@@ -355,12 +358,12 @@ void ha_discovery_publish_select(ha_select_t *select)
             snprintf(val_pair, sizeof(val_pair), "%s'%s': '%s'", first ? "" : ", ", m->value, m->key);
             snprintf(cmd_pair, sizeof(cmd_pair), "%s'%s': '%s'", first ? "" : ", ", m->key, m->value);
 
-            strcat(val_map_buf, val_pair);
-            strcat(cmd_map_buf, cmd_pair);
+            strlcat(val_map_buf, val_pair, sizeof(val_map_buf));
+            strlcat(cmd_map_buf, cmd_pair, sizeof(cmd_map_buf));
             first = false;
         }
-        strcat(val_map_buf, "}");
-        strcat(cmd_map_buf, "}");
+        strlcat(val_map_buf, "}", sizeof(val_map_buf));
+        strlcat(cmd_map_buf, "}", sizeof(cmd_map_buf));
 
         snprintf(value_template, sizeof(value_template), "{{ %s.get(value_json.%s | string, 'Unknown') }}", val_map_buf, meta->name_id);
         snprintf(command_template, sizeof(command_template), "{{ %s.get(value, '%s') }}", cmd_map_buf, select->mappers[0].value);

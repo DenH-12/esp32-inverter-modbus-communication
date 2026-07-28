@@ -17,6 +17,8 @@ extern char wifi_ssid[];
 
 void update_system_info_task(void *pvParameters)
 {
+    xEventGroupWaitBits(inverter_event_group, INV_EVENT_MQTT_CONNECTED, pdFALSE, pdTRUE, portMAX_DELAY);
+
     char json_string[512];
     wifi_ap_record_t ap_info;
 
@@ -57,6 +59,10 @@ void update_system_info_task(void *pvParameters)
 
         mqtt_publish_topic(mqtt_system_realtime_topic, json_string, false);
 
+        if (sys_data_send_interval_s == 0)
+        {
+            vTaskDelete(NULL); // Exit the task if sending system data delay = 0
+        }
         vTaskDelay(pdMS_TO_TICKS(sys_data_send_interval_s * 1000));
     }
 }

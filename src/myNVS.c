@@ -8,8 +8,6 @@ uint8_t sys_data_send_interval_s = 0;
 uint16_t webserver_port = 0;
 uint16_t mqtt_port = 0;
 
-size_t ha_discovery_topic_len = sizeof(ha_discovery_topic);
-
 void nvs_init(void)
 {
     esp_err_t ret = nvs_flash_init();
@@ -38,7 +36,8 @@ void nvs_init(void)
     }
 
     // read saved data from NVS
-    nvs_get_str(my_handle, NVS_DISCOVERY_TOPIC, ha_discovery_topic, &ha_discovery_topic_len);
+    size_t len = sizeof(ha_discovery_topic);
+    nvs_get_str(my_handle, NVS_DISCOVERY_TOPIC, ha_discovery_topic, &len);
     nvs_get_u8(my_handle, NVS_KEY_DATA_SEC, &data_read_interval_s);
     nvs_get_u8(my_handle, NVS_KEY_SYS_SEC, &sys_data_send_interval_s);
     nvs_get_u16(my_handle, NVS_KEY_WEB_PORT, &webserver_port);

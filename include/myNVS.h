@@ -17,3 +17,5 @@
 
 void nvs_init(void);
 esp_err_t nvs_reset_saved_settings();
+
+extern char ha_discovery_topic[128];
