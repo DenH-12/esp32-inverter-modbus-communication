@@ -17,7 +17,7 @@ extern char wifi_ssid[];
 
 void update_system_info_task(void *pvParameters)
 {
-    xEventGroupWaitBits(inverter_event_group, INV_EVENT_MQTT_CONNECTED, pdFALSE, pdTRUE, portMAX_DELAY);
+    xEventGroupWaitBits(modbus_event_group, INV_EVENT_MQTT_CONNECTED, pdFALSE, pdTRUE, portMAX_DELAY);
 
     char json_string[512];
     wifi_ap_record_t ap_info;
@@ -39,7 +39,7 @@ void update_system_info_task(void *pvParameters)
     while (1)
     {
         // Check MQTT connection
-        if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED))
+        if (!(xEventGroupGetBits(modbus_event_group) & INV_EVENT_MQTT_CONNECTED))
         {
             vTaskDelay(pdMS_TO_TICKS(5000));
             continue;

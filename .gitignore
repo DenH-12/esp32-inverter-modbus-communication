@@ -1,3 +1,5 @@
-.pio
-.vscode
-bin
+.pio/
+.vscode/
+bin/
+src/mock_esp32.py
+other/

@@ -26,12 +26,12 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         ESP_LOGI(TAG, "MQTT connected");
         esp_mqtt_client_publish(client, mqtt_will_topic, "online", 0, 1, 1);
         esp_mqtt_client_subscribe(client, subscribe_topic, 0);
-        xEventGroupSetBits(inverter_event_group, INV_EVENT_MQTT_CONNECTED);
+        xEventGroupSetBits(modbus_event_group, INV_EVENT_MQTT_CONNECTED);
         break;
 
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT disconnected");
-        xEventGroupClearBits(inverter_event_group, INV_EVENT_MQTT_CONNECTED);
+        xEventGroupClearBits(modbus_event_group, INV_EVENT_MQTT_CONNECTED);
         break;
 
     case MQTT_EVENT_DATA:
@@ -50,28 +50,28 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
                 esp_restart();
             }
             // Check for refresh settings command
-            else if (strstr(topic, "refresh") && atoi(data) == 1)
+            else if (strstr(topic, "refresh_settings") && atoi(data) == 1)
             {
-                ESP_LOGI(TAG, "Received refresh command via MQTT");
-                xEventGroupSetBits(inverter_event_group, INV_EVENT_REFRESH_SETTINGS);
+                ESP_LOGI(TAG, "Received refresh settings command via MQTT");
+                xEventGroupSetBits(modbus_event_group, INV_EVENT_REFRESH_SETTINGS);
                 break;
             }
             // Check for set setting commands
-            for (size_t i = 0; i < inv_settings_map_len; i++)
+            for (size_t i = 0; i < settings_map_count; i++)
             {
-                const reg_metadata_t *meta = &inv_settings_map[i];
+                const settings_reg_t *meta = &settings_map[i];
 
-                if (strstr(topic, meta->name_id))
+                if (strstr(topic, meta->id))
                 {
                     float value = atof(data);
-                    uint16_t raw_value = (uint16_t)(value / meta->multiplier);
+                    uint16_t raw_value = (uint16_t)(value / meta->factor);
 
                     inv_cmd_t cmd = {.reg = meta->reg, .value = raw_value};
-                    if (xQueueSend(inv_cmd_queue, &cmd, pdMS_TO_TICKS(100)) != pdPASS)
+                    if (xQueueSend(modbus_cmd_queue, &cmd, pdMS_TO_TICKS(100)) != pdPASS)
                     {
                         ESP_LOGE(TAG, "Failed to send cmd, queue full");
                     }
-                    ESP_LOGI(TAG, "Setting %s to: %d", meta->name_id, raw_value);
+                    ESP_LOGI(TAG, "Setting %s to: %d", meta->id, raw_value);
 
                     break;
                 }

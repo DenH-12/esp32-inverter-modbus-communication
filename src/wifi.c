@@ -46,7 +46,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        xEventGroupClearBits(inverter_event_group, INV_EVENT_WIFI_CONNECTED);
+        xEventGroupClearBits(modbus_event_group, INV_EVENT_WIFI_CONNECTED);
         // auto-reconnect
         ESP_LOGI(TAG, "STA disconnected. Retrying in %d ms...", WIFI_RETRY_INTERVAL_MS);
 
@@ -68,7 +68,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         
         ESP_LOGI(TAG, "Connected to: \"%s\", IP: \"%s\"", wifi_ssid, wifi_ip);
 
-        xEventGroupSetBits(inverter_event_group, INV_EVENT_WIFI_CONNECTED);
+        xEventGroupSetBits(modbus_event_group, INV_EVENT_WIFI_CONNECTED);
 
         if (wifi_retry_timer != NULL)
         {

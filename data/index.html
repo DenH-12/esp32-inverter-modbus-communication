@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solar Inverter Control Panel</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100%25' height='100%25' rx='20' fill='%231e293b'/><text x='50%25' y='65%25' font-family='monospace, sans-serif' font-weight='bold' font-size='48' fill='%23ffffff' text-anchor='middle'>ESP</text></svg>">
+  <link rel="stylesheet" href="style.css">
+
+  <script src="script.js" defer></script>
+</head>
+
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="title-block">
+          <h1>Solar Inverter Node</h1>
+          <p>ESP32 Modbus-MQTT Gateway</p>
+        </div>
+      </div>
+      <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('main')">Main</button>
+        <button class="tab-btn" onclick="switchTab('scanner')">Scanner</button>
+      </div>
+      <a id="version-tag" class="version-tag"
+        href="https://github.com/DenH-12/esp32-inverter-modbus-communication/releases" target="_blank"
+        rel="noopener noreferrer">v0.0.0</a>
+    </header>
+    <div id="main" class="dashboard-grid tab-content">
+      <!-- Form -->
+      <main>
+        <form id="configForm" class="configForm" novalidate>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>01. Wi-Fi Connection</h2>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="wifiSsid" class="required-label">Network SSID</label>
+                <div class="input-wrapper">
+                  <input id="wifiSsid" name="wifiSsid" type="text" placeholder="Access Point Name" required />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="wifiPassword" class="required-label">Password</label>
+                <div class="input-wrapper">
+                  <input id="wifiPassword" name="wifiPassword" type="password" placeholder="••••••••" required />
+                  <button type="button" class="toggle-pwd" data-target="wifiPassword">Show</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>02. MQTT Broker</h2>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="mqttBroker" class="required-label">Server IP / Host</label>
+                <div class="input-wrapper">
+                  <input id="mqttBroker" name="mqttBroker" type="text" placeholder="mqtt://192.168.1.50" required />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="mqttPort" class="required-label">Port</label>
+                <div class="input-wrapper">
+                  <input id="mqttPort" name="mqttPort" type="number" placeholder="1883" required />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="mqttUsername">Username</label>
+                <div class="input-wrapper">
+                  <input id="mqttUsername" name="mqttUsername" type="text" placeholder="Optional" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="mqttPassword">Password</label>
+                <div class="input-wrapper">
+                  <input id="mqttPassword" name="mqttPassword" type="password" placeholder="Optional" />
+                  <button type="button" class="toggle-pwd" data-target="mqttPassword">Show</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>03. Telemetry & Integration</h2>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="haDiscoveryTopic" class="required-label">HA Topic</label>
+                <div class="input-wrapper">
+                  <input id="haDiscoveryTopic" name="haDiscoveryTopic" placeholder="homeassistant" value="homeassistant"
+                    required />
+                </div>
+              </div>
+
+              <div class="field" style="justify-content: flex-end;">
+                <button type="button" id="haDiscoveryBtn" class="btn btn-secondary">Run Discovery</button>
+              </div>
+
+              <div class="field">
+                <label for="dataReadInterval" class="required-label">Read Poll (sec)</label>
+                <div class="input-wrapper">
+                  <input id="dataReadInterval" name="dataReadInterval" type="number" min="1" placeholder="2" required />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="sysDataSendInterval" class="required-label">Push Telemetry (sec)</label>
+                <div class="input-wrapper">
+                  <input id="sysDataSendInterval" name="sysDataSendInterval" type="number" min="1" placeholder="2"
+                    required />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="webServerPort" class="required-label">Webserver Port</label>
+                <div class="input-wrapper">
+                  <input id="webServerPort" name="webServerPort" type="number" min="80" max="65535"
+                    placeholder="80...65535" required />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="formStatus" class="status-banner">System ready.</div>
+
+          <div class="btn-group">
+            <button type="submit" id="saveBtn" class="btn btn-primary">Save Configuration</button>
+            <button type="button" id="rebootBtn" class="btn btn-danger">Reboot ESP32</button>
+          </div>
+
+        </form>
+      </main>
+
+      <!-- Sidebar -->
+      <aside>
+        <div class="card">
+          <div class="card-header">
+            <h2>Live Diagnostics</h2>
+          </div>
+          <div class="status-list">
+            <div class="status-item">
+              <span class="status-label">Wi-Fi Network</span>
+              <div class="status-value-group">
+                <div id="ledWifi" class="led"></div>
+                <span id="statusWifi">Connecting...</span>
+              </div>
+            </div>
+
+            <div class="status-item">
+              <span class="status-label">ESP32 IP</span>
+              <div class="status-value-group">
+                <span id="statusIp">0.0.0.0</span>
+              </div>
+            </div>
+
+            <div class="status-item">
+              <span class="status-label">MQTT Broker</span>
+              <div class="status-value-group">
+                <div id="ledMqtt" class="led"></div>
+                <span id="statusMqtt">Disconnected</span>
+              </div>
+            </div>
+
+            <div class="status-item">
+              <span class="status-label">Signal (RSSI)</span>
+              <div class="status-value-group">
+                <span id="statusRssi">0 dBm</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" id="factoryReset" class="btn btn-danger">Factory Reset</button>
+      </aside>
+
+    </div>
+    <div id="scanner" class="tab-content" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <h2>Modbus Register Discovery</h2>
+        </div>
+        <form id="scanForm">
+          <div class="form-grid">
+            <div class="field">
+              <label class="required-label">Start Address (Dec)</label>
+              <input type="number" id="scanStart" value="200" min="0" max="65535" placeholder="0...65534" required>
+            </div>
+            <div class="field">
+              <label class="required-label">End Address (Dec)</label>
+              <input type="number" id="scanEnd" value="300" min="0" max="65535" placeholder="1...65535" required>
+            </div>
+            <div class="field">
+              <label class="required-label">Registers Per Read</label>
+              <input type="number" id="scanStep" value="10" min="1" max="125" placeholder="1...125" required>
+            </div>
+            <div class="field">
+              <button type="button" class="btn btn-primary" onclick="runRegisterScan()" id="btnDoScan">Scan</button>
+            </div>
+          </div>
+        </form>
+        <div id="scanStatusMsg" class="status-banner" style="display:none; margin-top:15px;"></div>
+
+        <div class="form-grid" style="margin-top: 15px; align-items: end;">
+          <div class="field" style="min-width: 220px;">
+            <label for="scanValueFilter">Filter values after scan</label>
+            <input type="text" id="scanValueFilter" placeholder="e.g. 220, 50, 1" autocomplete="off">
+          </div>
+          <div class="field" style="max-width: 140px;">
+            <button type="button" class="btn btn-secondary" onclick="filterScanResults()">Filter</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Addr (Dec)</th>
+                <th>Value (Raw)</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="scanResultsBody">
+              <tr>
+                <td colspan="3" style="text-align:center; padding:30px; color:var(--text-muted);">
+                  Enter range and click Scan
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>Mapping JSON Editor</h2>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+          Manually edit the register maps. Ensure valid JSON format before saving.
+        </p>
+        <div class="editor-container">
+          <div class="line-numbers" id="line-numbers">1</div>
+          <label class="toggle-edit">
+            <input type="checkbox" id="toggleEdit" onchange="toggleEditorMode(this)">
+            <span>Edit</span>
+          </label>
+          <div class="editor-overlay" id="editor-overlay"></div>
+          <textarea id="code-editor" readonly spellcheck="false" placeholder="Enter JSON..."></textarea>
+        </div>
+        <div id="jsonEditorMsg" class="status-banner" style="margin-top:15px;"></div>
+        <div class="btn-group" style="margin-top: 15px;">
+          <button type="button" class="btn btn-secondary" onclick="loadFullMapping()">Read Current Mapping</button>
+          <button type="button" class="btn btn-primary" onclick="uploadJsonFile()">Upload Mapping File</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Confirmation Modal Overlay -->
+  <div id="customModal" class="modal-overlay">
+    <div class="modal">
+      <div id="modalIcon" class="modal-icon danger">⚠️</div>
+      <div id="modalTitle" class="modal-title">Confirm Action</div>
+      <div id="modalDesc" class="modal-desc">Are you sure you want to proceed?</div>
+      <div class="modal-actions">
+        <button type="button" id="modalCancelBtn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="modalConfirmBtn" class="btn btn-danger">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Mapping Modal -->
+  <div id="mappingModal" class="modal-overlay">
+    <div class="modal" style="max-width: 550px;">
+      <div class="modal-icon primary">📝</div>
+      <div class="modal-title"><span id="mapAddrLabel"></span></div>
+
+      <form id="mappingForm">
+        <input type="hidden" id="mapAddr">
+
+        <!-- Toggle between Realtime and Settings -->
+        <div class="field" style="margin-bottom: 15px;">
+          <label class="required-label">Map Category</label>
+          <select id="mapCategory" onchange="toggleMappingFields()"
+            style="background:#1e293b; border:1px solid var(--card-border); color:white; padding:10px; border-radius:8px;">
+            <option value="realtime_map">Realtime Sensor (Read-only)</option>
+            <option value="settings_map">Setting / Control (Read-Write)</option>
+          </select>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+          <!-- Common Fields -->
+          <div class="field">
+            <label class="required-label">Display Name</label>
+            <input type="text" id="mapName" placeholder="PV Power" required>
+          </div>
+          <div class="field">
+            <label class="required-label">Unique ID</label>
+            <input type="text" id="mapId" placeholder="pv_power" required>
+          </div>
+          <div class="field">
+            <label>Unit of Measurement</label>
+            <input type="text" id="mapUnit" placeholder="W, V, A, °C, etc.">
+          </div>
+          <div class="field">
+            <label>Factor</label>
+            <input type="number" id="mapFactor" step="0.001" value="1.0" min="0.001" max="100" placeholder="1.0">
+          </div>
+
+          <!-- Realtime Sensor Specific Fields -->
+          <div class="field sensor-field">
+            <label>Device Class</label>
+            <input type="text" id="mapClass" placeholder="power, voltage, etc.">
+          </div>
+          <div class="field sensor-field">
+            <label>Data Type</label>
+            <select id="mapSigned"
+              style="background:#0d131f; border:1px solid var(--card-border); color:white; padding:10px; border-radius:8px;">
+              <option value="false">Unsigned (16-bit)</option>
+              <option value="true">Signed (16-bit)</option>
+            </select>
+          </div>
+
+          <!-- Setting Specific Fields -->
+          <div class="field setting-field" style="display:none;">
+            <label>Type</label>
+            <select id="mapType" onchange="toggleOptionsField()"
+              style="background:#0d131f; border:1px solid var(--card-border); color:white; padding:10px; border-radius:8px;">
+              <option value="number">Number</option>
+              <option value="select">Select</option>
+            </select>
+          </div>
+          <div class="field select-field" id="optionsContainer" style="display:none; grid-column: span 2;">
+            <label>Select</label>
+            <div class="options-wrapper">
+              <div id="optionsList" class="options-list">
+
+              </div>
+
+              <button type="button" class="btn-add-option" onclick="addOption()">
+                <span class="plus-icon">+</span> Add Option
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeMappingModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add to Mapping</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+
+</html>

@@ -1,58 +1,45 @@
 #include "webserver.h"
-#include "sniffer.h"
+#include "modbus.h"
 #include "myNVS.h"
 
 const char *TAG = "WEB";
 
-extern const reg_metadata_t inv_map[];
 extern char ha_discovery_topic[];
 extern uint16_t webserver_port;
 extern uint16_t mqtt_port;
 extern uint8_t data_read_interval_s;
 extern uint8_t sys_data_send_interval_s;
+extern QueueHandle_t scan_queue;
+extern scan_status_t g_scan_status;
 
+static esp_err_t index_get_handler(httpd_req_t *req);
+static esp_err_t css_get_handler(httpd_req_t *req);
+static esp_err_t js_get_handler(httpd_req_t *req);
+static esp_err_t status_get_handler(httpd_req_t *req);
+static esp_err_t settings_post_handler(httpd_req_t *req);
+static esp_err_t settings_get_handler(httpd_req_t *req);
+static esp_err_t reboot_post_handler(httpd_req_t *req);
+static esp_err_t ha_discovery_post_handler(httpd_req_t *req);
+static esp_err_t reset_post_handler(httpd_req_t *req);
+static esp_err_t scan_registers_post_handler(httpd_req_t *req);
+static esp_err_t scan_registers_get_handler(httpd_req_t *req);
+static esp_err_t scan_registers_map_get_handler(httpd_req_t *req);
+static esp_err_t scan_registers_map_post_handler(httpd_req_t *req);
 
 // Assign URI handlers to specific URIs and methods
-static httpd_uri_t status_get_uri = {
-    .uri = "/api/status",
-    .method = HTTP_GET,
-    .handler = status_get_handler,
-    .user_ctx = NULL};
-
-static httpd_uri_t settings_post_uri = {
-    .uri = "/api/settings",
-    .method = HTTP_POST,
-    .handler = settings_post_handler,
-    .user_ctx = NULL};
-
-static httpd_uri_t settings_get_uri = {
-    .uri = "/api/settings",
-    .method = HTTP_GET,
-    .handler = settings_get_handler,
-    .user_ctx = NULL};
-
-static httpd_uri_t index_uri = {
-    .uri = "/",
-    .method = HTTP_GET,
-    .handler = index_get_handler};
-
-static httpd_uri_t reboot_uri = {
-    .uri = "/api/reboot",
-    .method = HTTP_POST,
-    .handler = reboot_post_handler,
-    .user_ctx = NULL};
-
-static httpd_uri_t ha_discovery_uri = {
-    .uri = "/api/ha_discovery",
-    .method = HTTP_POST,
-    .handler = ha_discovery_post_handler,
-    .user_ctx = NULL};
-
-static httpd_uri_t reset_post_uri = {
-    .uri = "/api/factory-reset",
-    .method = HTTP_POST,
-    .handler = reset_post_handler,
-    .user_ctx = NULL};
+static httpd_uri_t index_uri =          { "/",                    HTTP_GET,    index_get_handler           };
+static httpd_uri_t css_uri =            { "/style.css",           HTTP_GET,    css_get_handler             };
+static httpd_uri_t js_uri =             { "/script.js",           HTTP_GET,    js_get_handler              };
+static httpd_uri_t status_get_uri =     { "/api/status",          HTTP_GET,    status_get_handler          };
+static httpd_uri_t settings_post_uri =  { "/api/settings",        HTTP_POST,   settings_post_handler       };
+static httpd_uri_t settings_get_uri =   { "/api/settings",        HTTP_GET,    settings_get_handler        };
+static httpd_uri_t reboot_uri =         { "/api/reboot",          HTTP_POST,   reboot_post_handler         };
+static httpd_uri_t ha_discovery_uri =   { "/api/ha_discovery",    HTTP_POST,   ha_discovery_post_handler   };
+static httpd_uri_t reset_post_uri =     { "/api/factory-reset",   HTTP_POST,   reset_post_handler          };
+static httpd_uri_t scan_registers_post_uri = { "/api/scan-registers",  HTTP_POST,   scan_registers_post_handler };
+static httpd_uri_t scan_registers_get_uri = { "/api/scan-registers",  HTTP_GET,   scan_registers_get_handler };
+static httpd_uri_t scan_registers_map_post_uri = { "/api/registers-map", HTTP_POST, scan_registers_map_post_handler};
+static httpd_uri_t scan_registers_map_get_uri = { "/api/registers-map", HTTP_GET, scan_registers_map_get_handler};
 
 httpd_handle_t server = NULL;
 httpd_handle_t webserver_init(void) 
@@ -62,16 +49,23 @@ httpd_handle_t webserver_init(void)
     config.server_port = webserver_port; // Set the server port
     config.lru_purge_enable = true;
     config.max_open_sockets = 5;
+    config.max_uri_handlers = 15;
 
     if (httpd_start(&server, &config) == ESP_OK)
     {
+        httpd_register_uri_handler(server, &index_uri);
+        httpd_register_uri_handler(server, &css_uri);
+        httpd_register_uri_handler(server, &js_uri);
         httpd_register_uri_handler(server, &status_get_uri);
         httpd_register_uri_handler(server, &settings_post_uri);
         httpd_register_uri_handler(server, &settings_get_uri);
-        httpd_register_uri_handler(server, &index_uri);
         httpd_register_uri_handler(server, &reboot_uri);
         httpd_register_uri_handler(server, &ha_discovery_uri);
         httpd_register_uri_handler(server, &reset_post_uri);
+        httpd_register_uri_handler(server, &scan_registers_post_uri);
+        httpd_register_uri_handler(server, &scan_registers_get_uri);
+        httpd_register_uri_handler(server, &scan_registers_map_get_uri);
+        httpd_register_uri_handler(server, &scan_registers_map_post_uri);
     }
     ESP_LOGI(TAG, "Webserver started on port %d", config.server_port);
     return server;
@@ -107,7 +101,53 @@ esp_err_t webserver_stop(void)
     return ESP_OK;
 }
 
-esp_err_t status_get_handler(httpd_req_t *req) 
+
+static esp_err_t serve_file(httpd_req_t *req, const char *filepath, const char *content_type)
+{
+    FILE *file = fopen(filepath, "r");
+    if (!file)
+    {
+        ESP_LOGE(TAG, "Could not open %s", filepath);
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    httpd_resp_set_type(req, content_type);
+
+    char buffer[1024];
+    size_t read_bytes;
+
+    while ((read_bytes = fread(buffer, 1, sizeof(buffer), file)) > 0)
+    {
+        if (httpd_resp_send_chunk(req, buffer, read_bytes) != ESP_OK)
+        {
+            fclose(file);
+            httpd_resp_sendstr_chunk(req, NULL);
+            return ESP_FAIL;
+        }
+    }
+
+    fclose(file);
+    httpd_resp_sendstr_chunk(req, NULL);
+    return ESP_OK;
+}
+
+static esp_err_t index_get_handler(httpd_req_t *req)
+{
+    return serve_file(req, "/spiffs/index.html", "text/html");
+}
+
+static esp_err_t css_get_handler(httpd_req_t *req)
+{
+    return serve_file(req, "/spiffs/style.css", "text/css");
+}
+
+static esp_err_t js_get_handler(httpd_req_t *req)
+{
+    return serve_file(req, "/spiffs/script.js", "application/javascript");
+}
+
+static esp_err_t status_get_handler(httpd_req_t *req) 
 {
 
     // Get current Wi-Fi status and IP address
@@ -132,7 +172,7 @@ esp_err_t status_get_handler(httpd_req_t *req)
     cJSON *root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "currentWifi", current_status);
     cJSON_AddStringToObject(root, "currentIp", current_ip);
-    bool mqtt_connected = (xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED);
+    bool mqtt_connected = (xEventGroupGetBits(modbus_event_group) & INV_EVENT_MQTT_CONNECTED);
     cJSON_AddStringToObject(root, "currentMqtt", mqtt_connected ? "Connected" : "Disconnected");
     cJSON_AddNumberToObject(root, "currentRssi", rssi);
 
@@ -146,7 +186,7 @@ esp_err_t status_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t settings_post_handler(httpd_req_t *req)
+static esp_err_t settings_post_handler(httpd_req_t *req)
 {
     // Read the incoming JSON data from the request
     char content[1024] = {0};
@@ -241,7 +281,7 @@ esp_err_t settings_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t settings_get_handler(httpd_req_t *req)
+static esp_err_t settings_get_handler(httpd_req_t *req)
 {
     // Read the configuration from NVS
     char mqtt_broker[64] = {0};
@@ -297,14 +337,7 @@ esp_err_t settings_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t index_get_handler(httpd_req_t *req)
-{
-    httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, index_html, HTTPD_RESP_USE_STRLEN);
-    return ESP_OK;
-}
-
-esp_err_t reboot_post_handler(httpd_req_t *req)
+static esp_err_t reboot_post_handler(httpd_req_t *req)
 {
     ESP_LOGI(TAG, "Reboot requested via web interface.");
     httpd_resp_set_type(req, "application/json");
@@ -317,10 +350,10 @@ esp_err_t reboot_post_handler(httpd_req_t *req)
     return ESP_OK; // This line will not be reached due to the restart
 }
 
-esp_err_t ha_discovery_post_handler(httpd_req_t *req)
+static esp_err_t ha_discovery_post_handler(httpd_req_t *req)
 {
     // Check MQTT connection before reading
-    if (!(xEventGroupGetBits(inverter_event_group) & INV_EVENT_MQTT_CONNECTED))
+    if (!(xEventGroupGetBits(modbus_event_group) & INV_EVENT_MQTT_CONNECTED))
     {
         ESP_LOGW(TAG, "Cannot run HA discovery: MQTT not connected");
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "MQTT not connected");
@@ -379,26 +412,23 @@ esp_err_t ha_discovery_post_handler(httpd_req_t *req)
 
     // Publishing HA Discovery configurations
     ha_discovery_publish_device_info();
-
+    ha_discovery_publish_buttons();
+    
     for (size_t i = 0; i < sys_sensors_count; i++)
     {
         ESP_LOGI(TAG, "Publishing HA discovery for: %s", sys_sensors[i].name);
         ha_discovery_publish_sys_sensor(&sys_sensors[i]);
     }
-    for (size_t i = 0; i < sensors_count; i++)
+
+    for (size_t i = 0; i < realtime_map_count; i++)
     {
-        ESP_LOGI(TAG, "Publishing HA discovery for: %s", sensors[i].name);
-        ha_discovery_publish_sensor(&sensors[i]);
+        ESP_LOGI(TAG, "Publishing HA discovery for: %s", realtime_map[i].name);
+        ha_discovery_publish_realtime(&realtime_map[i]);
     }
-    for (size_t i = 0; i < numbers_count; i++)
+    for (size_t i = 0; i < settings_map_count; i++)
     {
-        ESP_LOGI(TAG, "Publishing HA discovery for: %s", numbers[i].name);
-        ha_discovery_publish_number(&numbers[i]);
-    }
-    for (size_t i = 0; i < selects_count; i++)
-    {
-        ESP_LOGI(TAG, "Publishing HA discovery for: %s", selects[i].name);
-        ha_discovery_publish_select(&selects[i]);
+        ESP_LOGI(TAG, "Publishing HA discovery for: %s", settings_map[i].name);
+        ha_discovery_publish_settings(&settings_map[i]);
     }
 
     // Send a success response back to the frontend
@@ -409,7 +439,7 @@ esp_err_t ha_discovery_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t reset_post_handler(httpd_req_t *req)
+static esp_err_t reset_post_handler(httpd_req_t *req)
 {
     ESP_LOGI(TAG, "Reset settings requested via web interface.");
     nvs_reset_saved_settings();
@@ -423,4 +453,170 @@ esp_err_t reset_post_handler(httpd_req_t *req)
     esp_restart();
 
     return ESP_OK;
+}
+
+static esp_err_t scan_registers_post_handler(httpd_req_t *req)
+{
+    // Read the incoming JSON data from the request
+    char content[512] = {0};
+
+    size_t recv_size = (req->content_len < sizeof(content) - 1) ? req->content_len : sizeof(content) - 1;
+
+    int ret = httpd_req_recv(req, content, recv_size);
+    if (ret <= 0)
+    {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+        {
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
+    }
+
+    cJSON *root = cJSON_Parse(content);
+    if (root == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to parse JSON!");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Scan registers requested via web interface.");
+
+    scan_args_t args;
+
+    int val = 0;
+    if (get_json_int(root, "startAddr", &val))
+    {
+        args.start_addr = (uint16_t)val;
+    }
+    if (get_json_int(root, "endAddr", &val))
+    {
+        args.end_addr = (uint16_t)val;
+    }
+    if (get_json_int(root, "scanStep", &val))
+    {
+        args.reg_num_per_read = (uint16_t)val;
+    }
+
+    cJSON_Delete(root);
+
+    xSemaphoreTake(g_scan_status.mutex, portMAX_DELAY);
+    if (g_scan_status.is_running)
+    {
+        xSemaphoreGive(g_scan_status.mutex);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Scan already in progress");
+        return ESP_FAIL;
+    }
+    g_scan_status.is_running = true;
+    g_scan_status.is_done = false;
+    g_scan_status.current_addr = args.start_addr;
+    g_scan_status.end_addr = args.end_addr;
+
+    g_scan_status.results_array = cJSON_CreateArray();
+    xSemaphoreGive(g_scan_status.mutex);
+
+    if (xQueueSend(scan_queue, &args, 0) != pdTRUE)
+    {
+        xSemaphoreTake(g_scan_status.mutex, portMAX_DELAY);
+        g_scan_status.is_running = false;
+        xSemaphoreGive(g_scan_status.mutex);
+
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    httpd_resp_sendstr(req, "{\"status\":\"started\"}");
+    return ESP_OK;
+}
+
+static esp_err_t scan_registers_get_handler(httpd_req_t *req)
+{
+    xSemaphoreTake(g_scan_status.mutex, portMAX_DELAY);
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddBoolToObject(root, "running", g_scan_status.is_running);
+    cJSON_AddBoolToObject(root, "done", g_scan_status.is_done);
+    cJSON_AddNumberToObject(root, "current", g_scan_status.current_addr);
+    cJSON_AddNumberToObject(root, "end", g_scan_status.end_addr);
+
+    cJSON_AddItemToObject(root, "results", g_scan_status.results_array);
+    g_scan_status.results_array = cJSON_CreateArray();
+
+    xSemaphoreGive(g_scan_status.mutex);
+
+    char *json_out = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, json_out);
+    free(json_out);
+
+    return ESP_OK;
+}
+
+static esp_err_t scan_registers_map_post_handler(httpd_req_t *req)
+{
+    FILE *file = fopen("/spiffs/registers_map.json", "w");
+    if (!file)
+    {
+        ESP_LOGE(TAG, "Failed to open file for writing");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    // Read the incoming data in chunks and write to SPIFFS
+    char buf[1024];
+    int received = 0;
+    int remaining = req->content_len;
+
+    while (remaining > 0)
+    {
+        // Read a chunk of data from the request
+        int read_bytes = httpd_req_recv(req, buf, (remaining < sizeof(buf)) ? remaining : sizeof(buf));
+
+        if (read_bytes <= 0)
+        {
+            if (read_bytes == HTTPD_SOCK_ERR_TIMEOUT)
+            {
+                // If a timeout occurs, we can choose to continue reading or handle it as an error. Here, we will just continue to the next iteration.
+                continue;
+            }
+
+            // Error in connection or interruption
+            ESP_LOGE(TAG, "File receive failed/interrupted");
+            fclose(file);
+            httpd_resp_send_500(req);
+            return ESP_FAIL;
+        }
+
+        // Write the received chunk to SPIFFS
+        size_t written = fwrite(buf, 1, read_bytes, file);
+        if (written != read_bytes)
+        {
+            ESP_LOGE(TAG, "Failed to write all bytes to SPIFFS");
+            fclose(file);
+            httpd_resp_send_500(req);
+            return ESP_FAIL;
+        }
+
+        remaining -= read_bytes;
+        received += read_bytes;
+    }
+
+    fclose(file);
+
+    ESP_LOGI(TAG, "Registers map saved successfully. Received %d bytes.", received);
+
+    // Send a success response back to the frontend
+    httpd_resp_set_type(req, "application/json");
+    const char *response = "{\"status\":\"ok\"}";
+    httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+}
+
+static esp_err_t scan_registers_map_get_handler(httpd_req_t *req)
+{
+    // Serve the registers_map.json file
+    return serve_file(req, "/spiffs/registers_map.json", "application/json");
 }

@@ -1,0 +1,160 @@
+{
+  "realtime_map": [
+    { "name": "Grid Volts",  "id": "grid_voltage", "reg": 202,  "factor": 0.1,   "signed": false,  "class": "voltage",        "unit": "V"  },
+    { "name": "Grid Freq",   "id": "grid_freq",    "reg": 203,  "factor": 0.01,  "signed": false,  "class": "frequency",      "unit": "Hz" },
+    { "name": "Grid Power",  "id": "grid_power",   "reg": 204,  "factor": 1.0,   "signed": false,  "class": "power",          "unit": "W"  },
+    { "name": "Out Volts",   "id": "out_voltage",  "reg": 205,  "factor": 0.1,   "signed": false,  "class": "voltage",        "unit": "V"  },
+    { "name": "Out Freq",    "id": "out_freq",     "reg": 207,  "factor": 0.01,  "signed": false,  "class": "frequency",      "unit": "Hz" },
+    { "name": "Out Power",   "id": "out_power",    "reg": 208,  "factor": 1.0,   "signed": true,   "class": "power",          "unit": "W"  },
+    { "name": "Out Curr",    "id": "out_current",  "reg": 211,  "factor": 0.1,   "signed": false,  "class": "current",        "unit": "A"  },
+    { "name": "Out VA",      "id": "out_va",       "reg": 213,  "factor": 1.0,   "signed": false,  "class": "apparent_power", "unit": "VA" },
+    { "name": "Batt Volts",  "id": "batt_voltage", "reg": 215,  "factor": 0.1,   "signed": false,  "class": "voltage",        "unit": "V"  },
+    { "name": "Batt Curr",   "id": "batt_current", "reg": 216,  "factor": 0.1,   "signed": true,   "class": "current",        "unit": "A"  },
+    { "name": "Batt Power",  "id": "batt_power",   "reg": 217,  "factor": 1.0,   "signed": true,   "class": "power",          "unit": "W"  },
+    { "name": "PV Volts",    "id": "pv_voltage",   "reg": 219,  "factor": 0.1,   "signed": false,  "class": "voltage",        "unit": "V"  },
+    { "name": "PV Curr",     "id": "pv_current",   "reg": 220,  "factor": 0.1,   "signed": false,  "class": "current",        "unit": "A"  },
+    { "name": "PV Power",    "id": "pv_power",     "reg": 223,  "factor": 1.0,   "signed": false,  "class": "power",          "unit": "W"  },
+    { "name": "Load Pct",    "id": "load_pct",     "reg": 225,  "factor": 1.0,   "signed": false,  "class": null,             "unit": "%"  },
+    { "name": "Inv Temp",    "id": "temp_inv",     "reg": 227,  "factor": 1.0,   "signed": true,   "class": "temperature",    "unit": "°C" },
+    { "name": "DC Temp",     "id": "temp_dc",      "reg": 226,  "factor": 1.0,   "signed": true,   "class": "temperature",    "unit": "°C" },
+    { "name": "Batt SOC",    "id": "batt_soc",     "reg": 229,  "factor": 1.0,   "signed": false,  "class": "battery",        "unit": "%"  }
+  ],
+  "settings_map": [
+    {
+      "name": "Output Priority",
+      "id": "set_output_priority",
+      "reg": 301,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "UTI", "1": "SOL", "2": "SBU", "3": "SUB", "4": "SUF" }
+    },
+    {
+      "name": "Input Voltage Range",
+      "id": "set_input_voltage_range",
+      "reg": 302,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Appliances", "1": "UPS", "2": "Generator" }
+    },
+    {
+      "name": "Buzzer Mode",
+      "id": "set_buzzer_mode",
+      "reg": 303,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Off", "1": "On", "2": "Mute when input source changes", "3": "Alarm Only" }
+    },
+    {
+      "name": "Beep Source Interrupt",
+      "id": "set_beep_source_intrpt",
+      "reg": 304,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Off", "1": "On" }
+    },
+    {
+      "name": "Backlight",
+      "id": "set_backlight",
+      "reg": 305,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Off", "1": "On" }
+    },
+    {
+      "name": "Return Default Display",
+      "id": "set_return_default_display",
+      "reg": 306,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Off", "1": "On" }
+    },
+    {
+      "name": "Power Save Mode",
+      "id": "set_pwr_save_mode",
+      "reg": 307,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Off", "1": "On" }
+    },
+    {
+      "name": "Overload Restart",
+      "id": "set_overload_restart",
+      "reg": 308,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Off", "1": "On" }
+    },
+    {
+      "name": "Overtemperature Restart",
+      "id": "set_overtemp_restart",
+      "reg": 309,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Off", "1": "On" }
+    },
+    {
+      "name": "Overload Bypass",
+      "id": "set_overload_bypass",
+      "reg": 310,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Off", "1": "On" }
+    },
+    {
+      "name": "Output Voltage",
+      "id": "set_out_voltage",
+      "reg": 320,
+      "factor": 0.1,
+      "type": "select",
+      "options": { "220": "220Vac", "230": "230Vac", "240": "240Vac" }
+    },
+    {
+      "name": "Output Frequency",
+      "id": "set_out_frequency",
+      "reg": 321,
+      "factor": 0.01,
+      "type": "select",
+      "options": { "50": "50Hz", "60": "60Hz" }
+    },
+    {
+      "name": "Battery Type",
+      "id": "set_batt_type",
+      "reg": 322,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "AGM", "1": "Flooded", "2": "User", "3": "Li1", "4": "Li2", "5": "Li3", "6": "Li4" }
+    },
+    {
+      "name": "Battery Charge Priority",
+      "id": "set_batt_chg_priority",
+      "reg": 331,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Utility First", "1": "Solar First", "2": "Solar&Utility", "3": "Solar Only" }
+    },
+    {
+      "name": "Battery Equalization Mode",
+      "id": "set_batt_eq_mode",
+      "reg": 338,
+      "factor": 1.0,
+      "type": "select",
+      "options": { "0": "Off", "1": "On" }
+    },
+    { "name": "Batt DC Protect Volts", "id": "set_batt_dc_protect_voltage", "reg": 323,  "factor": 0.1,  "type": "number",  "unit": "V" },
+    { "name": "Batt Bulk Volts",       "id": "set_batt_bulk_voltage",       "reg": 324,  "factor": 0.1,  "type": "number",  "unit": "V" },
+    { "name": "Batt Float Volts",      "id": "set_batt_float_voltage",      "reg": 325,  "factor": 0.1,  "type": "number",  "unit": "V" },
+    { "name": "Batt Recovery Volts",   "id": "set_batt_recovery_voltage",   "reg": 326,  "factor": 0.1,  "type": "number",  "unit": "V" },
+    { "name": "Batt Protect Volts",    "id": "set_batt_protection_voltage", "reg": 327,  "factor": 0.1,  "type": "number",  "unit": "V" },
+    { "name": "Batt Cutoff Volts",     "id": "set_batt_cutoff_voltage",     "reg": 329,  "factor": 0.1,  "type": "number",  "unit": "V" },
+    { "name": "Batt CV Float Time",    "id": "set_batt_cv_float_time",      "reg": 330,  "factor": 1.0,  "type": "number",  "unit": "s" },
+    { "name": "Batt Max Chg Current",  "id": "set_batt_max_chg_a",          "reg": 332,  "factor": 0.1,  "type": "number",  "unit": "A" },
+    { "name": "Batt Max AC Chg Curr",  "id": "set_batt_max_ac_chg_current", "reg": 333,  "factor": 0.1,  "type": "number",  "unit": "A" },
+    { "name": "Batt Eq Chg Volts",     "id": "set_batt_eq_chg_voltage",     "reg": 334,  "factor": 0.1,  "type": "number",  "unit": "V" },
+    { "name": "Batt Eq Chg Time",      "id": "set_batt_eq_chg_time",        "reg": 335,  "factor": 1.0,  "type": "number",  "unit": "s" },
+    { "name": "Batt Eq Timeout",       "id": "set_batt_eq_timeout",         "reg": 336,  "factor": 1.0,  "type": "number",  "unit": "s" },
+    { "name": "Batt Eq Interval",      "id": "set_batt_eq_interval",        "reg": 337,  "factor": 1.0,  "type": "number",  "unit": "s" },
+    { "name": "Batt Protect SOC",      "id": "set_batt_protection_soc",     "reg": 341,  "factor": 1.0,  "type": "number",  "unit": "%" },
+    { "name": "Batt Recovery SOC",     "id": "set_batt_recovery_soc",       "reg": 342,  "factor": 1.0,  "type": "number",  "unit": "%" },
+    { "name": "Batt Cutoff SOC",       "id": "set_batt_cutoff_soc",         "reg": 343,  "factor": 1.0,  "type": "number",  "unit": "%" }
+  ]
+}
