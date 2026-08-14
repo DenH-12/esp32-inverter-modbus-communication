@@ -42,5 +42,5 @@ extern settings_reg_t *settings_map;
 extern size_t realtime_map_count;
 extern size_t settings_map_count;
 
-void init_fs(void);
+void init_spiffs(void);
 void load_register_config(void);

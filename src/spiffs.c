@@ -242,7 +242,7 @@ void load_register_config(void)
     ESP_LOGI(TAG, "Loaded %zu realtime and %zu settings registers", realtime_map_count, settings_map_count);
 }
 
-void init_fs(void)
+void init_spiffs(void)
 {
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",

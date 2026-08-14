@@ -776,3 +776,99 @@ setInterval(async () => {
         }
     } catch (error) { }
 }, 5000);
+
+// ----------------------- OTA Update ----------------------------
+
+const otaForm = document.getElementById('otaForm');
+const otaStatusMsg = document.getElementById('otaStatusMsg');
+
+otaForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await otaUpdate();
+});
+
+async function otaUpdate() {
+    const firmwareFile = document.getElementById('firmwareFile');
+    const filesystemImage = document.getElementById('filesystemImage');
+    const firmware = firmwareFile.files[0];
+    const filesystem = filesystemImage.files[0];
+
+    otaStatusMsg.style.display = "block";
+
+    if (!firmware && !filesystem) {
+        setStatus("Please select a firmware or filesystem image first.", otaStatusMsg, "warn");
+        return;
+    }
+
+    const submitBtn = otaForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const imagesToUpload = [];
+
+    if (firmware) {
+        if (!firmware.name.toLowerCase().endsWith('.bin')) {
+            setStatus("Only .bin firmware files are supported.", otaStatusMsg, "warn");
+            submitBtn.disabled = false;
+            return;
+        }
+        imagesToUpload.push({ file: firmware, endpoint: '/api/update/firmware', label: 'Firmware' });
+    }
+
+    if (filesystem) {
+        if (!filesystem.name.toLowerCase().endsWith('.bin')) {
+            setStatus("Only .bin filesystem files are supported.", otaStatusMsg, "warn");
+            submitBtn.disabled = false;
+            return;
+        }
+        imagesToUpload.push({ file: filesystem, endpoint: '/api/update/spiffs', label: 'Filesystem' });
+    }
+
+    try {
+        for (const item of imagesToUpload) {
+            setStatus(`Uploading ${item.label.toLowerCase()}...`, otaStatusMsg, "warn");
+
+            await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.open('POST', item.endpoint, true);
+                xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 100);
+                        setStatus(`Uploading ${item.label.toLowerCase()}... ${percent}%`, otaStatusMsg, "warn");
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(xhr.responseText);
+                    } else {
+                        reject(new Error(xhr.responseText || `HTTP ${xhr.status}`));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error(`Network error during ${item.label.toLowerCase()} upload`));
+                xhr.ontimeout = () => reject(new Error(`${item.label} upload timed out`));
+
+                xhr.send(item.file);
+            });
+
+            if (item.label === 'Firmware') {
+                setStatus("Firmware uploaded successfully. Device will reboot.", otaStatusMsg, "warn");
+                firmwareFile.value = '';
+            } else {
+                setStatus("Filesystem image uploaded successfully.", otaStatusMsg, "info");
+                filesystemImage.value = '';
+            }
+        }
+    } catch (error) {
+        console.error('OTA upload failed:', error);
+        setStatus(`OTA upload failed: ${error.message}`, otaStatusMsg, "error");
+    } finally {
+        await waitDeviceOnline();
+        setStatus("Device back online!", otaStatusMsg, "info");
+        
+        submitBtn.disabled = false;
+    }
+}

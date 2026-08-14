@@ -25,6 +25,8 @@ static esp_err_t scan_registers_post_handler(httpd_req_t *req);
 static esp_err_t scan_registers_get_handler(httpd_req_t *req);
 static esp_err_t scan_registers_map_get_handler(httpd_req_t *req);
 static esp_err_t scan_registers_map_post_handler(httpd_req_t *req);
+static esp_err_t ota_firmware_update_handler(httpd_req_t *req);
+static esp_err_t ota_fs_update_handler(httpd_req_t *req);
 
 // Assign URI handlers to specific URIs and methods
 static httpd_uri_t index_uri =          { "/",                    HTTP_GET,    index_get_handler           };
@@ -36,10 +38,12 @@ static httpd_uri_t settings_get_uri =   { "/api/settings",        HTTP_GET,    s
 static httpd_uri_t reboot_uri =         { "/api/reboot",          HTTP_POST,   reboot_post_handler         };
 static httpd_uri_t ha_discovery_uri =   { "/api/ha_discovery",    HTTP_POST,   ha_discovery_post_handler   };
 static httpd_uri_t reset_post_uri =     { "/api/factory-reset",   HTTP_POST,   reset_post_handler          };
-static httpd_uri_t scan_registers_post_uri = { "/api/scan-registers",  HTTP_POST,   scan_registers_post_handler };
-static httpd_uri_t scan_registers_get_uri = { "/api/scan-registers",  HTTP_GET,   scan_registers_get_handler };
-static httpd_uri_t scan_registers_map_post_uri = { "/api/registers-map", HTTP_POST, scan_registers_map_post_handler};
-static httpd_uri_t scan_registers_map_get_uri = { "/api/registers-map", HTTP_GET, scan_registers_map_get_handler};
+static httpd_uri_t scan_registers_post_uri =     { "/api/scan-registers",  HTTP_POST,   scan_registers_post_handler };
+static httpd_uri_t scan_registers_get_uri =      { "/api/scan-registers",  HTTP_GET,   scan_registers_get_handler   };
+static httpd_uri_t scan_registers_map_post_uri = { "/api/registers-map", HTTP_POST, scan_registers_map_post_handler };
+static httpd_uri_t scan_registers_map_get_uri =  { "/api/registers-map", HTTP_GET, scan_registers_map_get_handler   };
+static httpd_uri_t ota_firmware_update_uri =     { "/api/update/firmware", HTTP_POST, ota_firmware_update_handler };
+static httpd_uri_t ota_fs_update_uri =           { "/api/update/spiffs", HTTP_POST, ota_fs_update_handler };
 
 httpd_handle_t server = NULL;
 httpd_handle_t webserver_init(void) 
@@ -66,8 +70,11 @@ httpd_handle_t webserver_init(void)
         httpd_register_uri_handler(server, &scan_registers_get_uri);
         httpd_register_uri_handler(server, &scan_registers_map_get_uri);
         httpd_register_uri_handler(server, &scan_registers_map_post_uri);
+        httpd_register_uri_handler(server, &ota_firmware_update_uri);
+        httpd_register_uri_handler(server, &ota_fs_update_uri);
     }
     ESP_LOGI(TAG, "Webserver started on port %d", config.server_port);
+
     return server;
 }
 
@@ -101,6 +108,27 @@ esp_err_t webserver_stop(void)
     return ESP_OK;
 }
 
+static bool check_ota_space(size_t incoming_bin_size)
+{
+    const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+
+    if (update_partition == NULL)
+    {
+        ESP_LOGE(TAG, "No free OTA partition found");
+        return false;
+    }
+
+    ESP_LOGI(TAG, "Size of OTA partition: %lu bytes", update_partition->size);
+    ESP_LOGI(TAG, "Size of incoming firmware: %zu bytes", incoming_bin_size);
+
+    if (incoming_bin_size > update_partition->size)
+    {
+        ESP_LOGE(TAG, "Error: Firmware is too large for the allocated partition!");
+        return false;
+    }
+
+    return true;
+}
 
 static esp_err_t serve_file(httpd_req_t *req, const char *filepath, const char *content_type)
 {
@@ -619,4 +647,215 @@ static esp_err_t scan_registers_map_get_handler(httpd_req_t *req)
 {
     // Serve the registers_map.json file
     return serve_file(req, "/spiffs/registers_map.json", "application/json");
+}
+
+
+typedef esp_err_t (*ota_chunk_writer_t)(void *ctx, const uint8_t *data, size_t len);
+
+static esp_err_t stream_http_request(httpd_req_t *req, size_t expected_size, void *ctx, ota_chunk_writer_t write_chunk, const char *label)
+{
+    uint8_t buf[1024];
+    size_t remaining = expected_size;
+    int timeout_count = 0;
+
+    while (remaining > 0)
+    {
+        int read_bytes = httpd_req_recv(req, (char *)buf, (remaining < sizeof(buf)) ? remaining : sizeof(buf));
+
+        if (read_bytes <= 0)
+        {
+            if (read_bytes == HTTPD_SOCK_ERR_TIMEOUT)
+            {
+                timeout_count++;
+                if (timeout_count > 5)
+                {
+                    ESP_LOGE(TAG, "%s update timed out", label);
+                    return ESP_ERR_TIMEOUT;
+                }
+                continue;
+            }
+
+            ESP_LOGE(TAG, "%s update failed/interrupted", label);
+            return ESP_FAIL;
+        }
+
+        timeout_count = 0;
+
+        esp_err_t err = write_chunk(ctx, buf, (size_t)read_bytes);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error writing %s chunk: %s", label, esp_err_to_name(err));
+            return err;
+        }
+
+        remaining -= (size_t)read_bytes;
+    }
+
+    return ESP_OK;
+}
+
+typedef struct
+{
+    esp_ota_handle_t handle;
+} ota_stream_ctx_t;
+
+static esp_err_t ota_write_chunk(void *ctx, const uint8_t *data, size_t len)
+{
+    ota_stream_ctx_t *stream = (ota_stream_ctx_t *)ctx;
+    return esp_ota_write(stream->handle, data, len);
+}
+
+typedef struct
+{
+    const esp_partition_t *partition;
+    size_t offset;
+} spiffs_stream_ctx_t;
+
+static esp_err_t spiffs_write_chunk(void *ctx, const uint8_t *data, size_t len)
+{
+    spiffs_stream_ctx_t *stream = (spiffs_stream_ctx_t *)ctx;
+    esp_err_t err = esp_partition_write(stream->partition, stream->offset, data, len);
+    if (err == ESP_OK)
+    {
+        stream->offset += len;
+    }
+    return err;
+}
+
+static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
+{
+    if (req->content_len <= 0)
+    {
+        ESP_LOGE(TAG, "No data received for firmware OTA update");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No data received for firmware OTA update");
+        return ESP_FAIL;
+    }
+
+    if (!check_ota_space(req->content_len))
+    {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Not enough space for firmware OTA update");
+        return ESP_ERR_NO_MEM;
+    }
+
+    const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+    if (update_partition == NULL)
+    {
+        ESP_LOGE(TAG, "No free OTA partition found");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    esp_ota_handle_t ota_handle = 0;
+    esp_err_t err = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &ota_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error starting firmware OTA session: %s", esp_err_to_name(err));
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    ota_stream_ctx_t stream = { .handle = ota_handle };
+    err = stream_http_request(req, (size_t)req->content_len, &stream, ota_write_chunk, "firmware");
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Firmware stream failed: %s", esp_err_to_name(err));
+        esp_ota_abort(ota_handle);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Firmware stream failed");
+        return err;
+    }
+
+    err = esp_ota_end(ota_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Firmware validation failed: %s", esp_err_to_name(err));
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Firmware validation failed");
+        return ESP_FAIL;
+    }
+
+    err = esp_ota_set_boot_partition(update_partition);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to set boot partition: %s", esp_err_to_name(err));
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Firmware OTA update successful! Rebooting in 2 seconds...");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\":\"ok\", \"message\":\"Rebooting...\"}");
+
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    esp_restart();
+
+    return ESP_OK;
+}
+
+static esp_err_t ota_fs_update_handler(httpd_req_t *req)
+{
+    if (req->content_len <= 0)
+    {
+        ESP_LOGE(TAG, "No data received for SPIFFS update");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No data received for SPIFFS update");
+        return ESP_FAIL;
+    }
+
+    const esp_partition_t *spiffs_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, NULL);
+    if (spiffs_partition == NULL)
+    {
+        ESP_LOGE(TAG, "No SPIFFS partition found");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    if ((size_t)req->content_len > spiffs_partition->size)
+    {
+        ESP_LOGE(TAG, "SPIFFS image is too large for partition");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "SPIFFS image is too large for partition");
+        return ESP_ERR_NO_MEM;
+    }
+
+    // Unmount fs
+    if (esp_spiffs_mounted(spiffs_partition->label))
+    {
+        esp_vfs_spiffs_unregister(spiffs_partition->label);
+        ESP_LOGI(TAG, "Unmounted SPIFFS (%s) before update", spiffs_partition->label);
+    }
+
+    // Round erase size
+    size_t erase_size = (req->content_len + 4095) & ~4095;
+    if (erase_size > spiffs_partition->size)
+    {
+        erase_size = spiffs_partition->size;
+    }
+
+    esp_err_t err = esp_partition_erase_range(spiffs_partition, 0, erase_size);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to erase SPIFFS partition: %s", esp_err_to_name(err));
+        init_spiffs();
+        httpd_resp_send_500(req);
+        return err;
+    }
+
+    spiffs_stream_ctx_t stream = {
+        .partition = spiffs_partition,
+        .offset = 0
+    };
+
+    err = stream_http_request(req, (size_t)req->content_len, &stream, spiffs_write_chunk, "SPIFFS");
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "SPIFFS stream failed: %s", esp_err_to_name(err));
+        init_spiffs();
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "SPIFFS stream failed");
+        return err;
+    }
+
+    init_spiffs();
+
+    ESP_LOGI(TAG, "SPIFFS update successful");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\":\"ok\", \"message\":\"SPIFFS updated\"}");
+
+    return ESP_OK;
 }

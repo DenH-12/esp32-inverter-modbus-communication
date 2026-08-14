@@ -130,7 +130,7 @@ esp_err_t mqtt_init(void)
         .credentials.client_id = device_id,
         .network.timeout_ms = 10000,
         .network.reconnect_timeout_ms = 10000,
-        .session.keepalive = 30,
+        .session.keepalive = 15,
         .session.last_will = {
             .topic = mqtt_will_topic,
             .msg = "offline",
