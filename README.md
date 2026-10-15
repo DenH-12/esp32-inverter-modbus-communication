@@ -24,3 +24,9 @@ Download `full-firmware.bin` from the latest [Release](https://github.com/DenH-1
 esptool --chip esp32 --port /dev/ttyUSB0 --baud 460800 write-flash 0x0 full-firmware.bin
 ```
 (On Windows, replace /dev/ttyUSB0 with your COM port, e.g., COM3)
+
+### Option 3: Accessing the Web UI
+
+After flashing the firmware:
+1. Connect to the ESP32 Wi-Fi Access Point (AP) named **ESP32_Solar_********.
+2. Open your web browser and navigate to: [http://192.168.4.1](http://192.168.4.1)
