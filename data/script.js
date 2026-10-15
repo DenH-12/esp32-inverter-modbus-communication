@@ -424,6 +424,11 @@ async function readSavedSettings() {
             if (config.dataReadInterval) document.querySelector('input[name="dataReadInterval"]').value = config.dataReadInterval;
             if (config.sysDataSendInterval) document.querySelector('input[name="sysDataSendInterval"]').value = config.sysDataSendInterval;
             if (config.webServerPort) document.querySelector('input[name="webServerPort"]').value = config.webServerPort;
+            if (config.modbusAddr) document.querySelector('input[name="modbusAddr"]').value = config.modbusAddr;
+            if (config.modbusTx) document.querySelector('input[name="modbusTx"]').value = config.modbusTx;
+            if (config.modbusRx) document.querySelector('input[name="modbusRx"]').value = config.modbusRx;
+            if (config.modbusPortNum) document.querySelector('input[name="modbusPortNum"]').value = config.modbusPortNum;
+            if (config.modbusBaudRate) document.querySelector('input[name="modbusBaudRate"]').value = config.modbusBaudRate;
         }
     } catch (error) {
         console.error("Failed to load setup:", error);

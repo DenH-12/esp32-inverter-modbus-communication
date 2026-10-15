@@ -10,14 +10,14 @@ extern uint8_t data_read_interval_s;
 modbus_block_t realtime_block = {0};
 modbus_block_t settings_block = {0};
 
-void modbus_init()
+esp_err_t modbus_init()
 {
     modbus_event_group = xEventGroupCreate();
     // Trigger initial settings read on startup
     xEventGroupSetBits(modbus_event_group, INV_EVENT_REFRESH_SETTINGS);
 
     uart_config_t sniffer_config = {
-        .baud_rate = SNIFFER_BAUD_RATE,
+        .baud_rate = modbus_baud_rate,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -25,14 +25,30 @@ void modbus_init()
         .source_clk = UART_SCLK_DEFAULT,
     };
 
-    ESP_ERROR_CHECK(uart_param_config(SNIFFER_PORT_NUM, &sniffer_config));
-    ESP_ERROR_CHECK(uart_set_pin(SNIFFER_PORT_NUM, SNIFFER_TX_PIN, SNIFFER_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    ESP_ERROR_CHECK(uart_driver_install(SNIFFER_PORT_NUM, SNIFFER_BUF_SIZE, 0, 0, NULL, 0));
+    // Validate Modbus configuration
+    if (modbus_tx == modbus_rx)
+    {
+        ESP_LOGE(TAG, "Invalid Modbus configuration: TX and RX use the same GPIO (%d)", modbus_tx);
+        return ESP_ERR_INVALID_ARG;
+    } else if (modbus_baud_rate < 1200 || modbus_baud_rate > 115200) {
+        ESP_LOGE(TAG, "Invalid Modbus baud rate: %d. Must be between 1200 and 115200.", modbus_baud_rate);
+        return ESP_ERR_INVALID_ARG;
+    } else if (modbus_port_num > UART_NUM_MAX) {
+        ESP_LOGE(TAG, "Invalid Modbus UART port number: %d. Must be between 0 and %d.", modbus_port_num, UART_NUM_MAX - 1);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ESP_ERROR_CHECK(uart_param_config(modbus_port_num, &sniffer_config));
+    ESP_ERROR_CHECK(uart_set_pin(modbus_port_num, modbus_tx, modbus_rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_driver_install(modbus_port_num, SNIFFER_BUF_SIZE, 0, 0, NULL, 0));
 
     modbus_cmd_queue = xQueueCreate(10, sizeof(inv_cmd_t));
     scan_queue = xQueueCreate(5, sizeof(scan_args_t));
 
     scan_status_init();
+
+    ESP_LOGI(TAG, "Modbus initialized at baud rate %d on UART%d (TX: GPIO%d, RX: GPIO%d)", modbus_baud_rate, modbus_port_num, modbus_tx, modbus_rx);
+    return ESP_OK;
 }
 
 void scan_status_init(void)
@@ -220,7 +236,7 @@ void parse_modbus_data(uint16_t start_addr, uint8_t *data)
 void modbus_read_block(const modbus_block_t *block)
 {
     uint8_t rx_buf[256];
-    uint8_t tx_pkt[8] = {SNIFFER_MODBUS_ADDR, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t tx_pkt[8] = {modbus_addr, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     // Prepare Modbus request
     tx_pkt[2] = (block->start_addr >> 8) & 0xFF;
@@ -233,12 +249,12 @@ void modbus_read_block(const modbus_block_t *block)
     tx_pkt[7] = (crc >> 8) & 0xFF;
 
     // Send request
-    uart_flush(SNIFFER_PORT_NUM);
-    uart_write_bytes(SNIFFER_PORT_NUM, (const char *)tx_pkt, 8);
+    uart_flush(modbus_port_num);
+    uart_write_bytes(modbus_port_num, (const char *)tx_pkt, 8);
 
     // Read response (expecting: SlaveID(1) + Func(1) + ByteCount(1) + Data(N*2) + CRC(2))
     int expected_len = 3 + (block->count * 2) + 2;
-    int len = uart_read_bytes(SNIFFER_PORT_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(500));
+    int len = uart_read_bytes(modbus_port_num, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(500));
 
     // Check CRC from response
     uint16_t rx_crc = rx_buf[len - 2] | (rx_buf[len - 1] << 8);
@@ -250,7 +266,7 @@ void modbus_read_block(const modbus_block_t *block)
         return;
     }
 
-    if (len >= expected_len && rx_buf[0] == SNIFFER_MODBUS_ADDR && rx_buf[1] == 0x03)
+    if (len >= expected_len && rx_buf[0] == modbus_addr && rx_buf[1] == 0x03)
     {
         parse_modbus_data(block->start_addr, &rx_buf[3]);
     }
@@ -284,7 +300,7 @@ uint16_t crc16_modbus(const uint8_t *data, uint16_t len)
 esp_err_t modbus_write_register(uint16_t reg_addr, uint16_t value)
 {
     uint8_t tx_pkt[11];
-    tx_pkt[0] = SNIFFER_MODBUS_ADDR; // Slave ID
+    tx_pkt[0] = modbus_addr; // Slave ID
     tx_pkt[1] = 0x10;                // Function: Write Register
     tx_pkt[2] = (reg_addr >> 8);     // Address High
     tx_pkt[3] = (reg_addr & 0xFF);   // Address Low
@@ -300,12 +316,12 @@ esp_err_t modbus_write_register(uint16_t reg_addr, uint16_t value)
     tx_pkt[10] = (crc >> 8) & 0xFF;
 
     vTaskDelay(pdMS_TO_TICKS(50));
-    uart_flush(SNIFFER_PORT_NUM);
-    uart_write_bytes(SNIFFER_PORT_NUM, (const char *)tx_pkt, sizeof(tx_pkt));
+    uart_flush(modbus_port_num);
+    uart_write_bytes(modbus_port_num, (const char *)tx_pkt, sizeof(tx_pkt));
 
     // Wait for response (expecting: SlaveID(1) + Func(1) + Address(2) + Count(2) + CRC(2))
     uint8_t rx_buf[11];
-    int len = uart_read_bytes(SNIFFER_PORT_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(500));
+    int len = uart_read_bytes(modbus_port_num, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(500));
 
     // Check CRC from response
     uint16_t rx_crc = rx_buf[len - 2] | (rx_buf[len - 1] << 8);
@@ -335,7 +351,7 @@ esp_err_t modbus_write_register(uint16_t reg_addr, uint16_t value)
 void run_modbus_scan(const scan_args_t *args)
 {
     uint8_t rx_buf[256];
-    uint8_t tx_pkt[8] = {SNIFFER_MODBUS_ADDR, 0x03};
+    uint8_t tx_pkt[8] = {modbus_addr, 0x03};
 
     ESP_LOGI(TAG, "Starting Modbus Register Scan (%u-%u)...", args->start_addr, args->end_addr);
 
@@ -356,10 +372,10 @@ void run_modbus_scan(const scan_args_t *args)
         tx_pkt[6] = crc & 0xFF;
         tx_pkt[7] = (crc >> 8) & 0xFF;
 
-        uart_flush(SNIFFER_PORT_NUM);
-        uart_write_bytes(SNIFFER_PORT_NUM, (const char *)tx_pkt, 8);
+        uart_flush(modbus_port_num);
+        uart_write_bytes(modbus_port_num, (const char *)tx_pkt, 8);
         
-        int len = uart_read_bytes(SNIFFER_PORT_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(500));
+        int len = uart_read_bytes(modbus_port_num, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(500));
         uint16_t expected_len = 5 + (count * 2);
 
         if (len < 5 || len != expected_len)
@@ -380,7 +396,7 @@ void run_modbus_scan(const scan_args_t *args)
             vTaskDelay(pdMS_TO_TICKS(50));
             continue;
         }
-        if (rx_buf[0] == SNIFFER_MODBUS_ADDR && rx_buf[1] == 0x03)
+        if (rx_buf[0] == modbus_addr && rx_buf[1] == 0x03)
         {
             for (uint16_t i = 0; i < count; i++)
             {

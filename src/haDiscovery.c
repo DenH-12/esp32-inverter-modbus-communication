@@ -3,7 +3,7 @@
 #include <string.h>
 #include "cJSON.h"
 
-static const char *TAG = "haDiscovery";
+// static const char *TAG = "haDiscovery";
 extern char device_id[];
 extern char device_id_lower[];
 extern char mqtt_stats_topic[];

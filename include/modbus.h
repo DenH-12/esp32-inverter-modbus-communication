@@ -6,13 +6,8 @@
 #include "cJSON.h"
 #include "spiffs.h"
 
-#define SNIFFER_PORT_NUM UART_NUM_1
-#define SNIFFER_BAUD_RATE 9600
-#define SNIFFER_TX_PIN 17
-#define SNIFFER_RX_PIN 16
 #define SNIFFER_BUF_SIZE 1024
 
-#define SNIFFER_MODBUS_ADDR 0x01
 #define SNIFFER_OUTPUT_READINGS 0
 #define SNIFFER_PUBLISH_MQTT 1
 
@@ -55,7 +50,7 @@ typedef struct
 extern EventGroupHandle_t modbus_event_group;
 extern QueueHandle_t modbus_cmd_queue;
 
-void modbus_init();
+esp_err_t modbus_init();
 void scan_status_init(void);
 
 void modbus_read_task(void *pvParameters);

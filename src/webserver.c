@@ -294,6 +294,21 @@ static esp_err_t settings_post_handler(httpd_req_t *req)
         }
         nvs_set_u16(my_handle, NVS_KEY_WEB_PORT, webserver_port);
     }
+    if (get_json_int(root, "modbusAddr", &val) && val >= 0 && val <= 247) {
+        nvs_set_u8(my_handle, NVS_KEY_MODBUS_ADDR, (uint8_t)val);
+    }
+    if (get_json_int(root, "modbusTx", &val) && val >= 0 && val <= 40) {
+        nvs_set_u8(my_handle, NVS_KEY_MODBUS_TX, (uint8_t)val);
+    }
+    if (get_json_int(root, "modbusRx", &val) && val >= 0 && val <= 40) {
+        nvs_set_u8(my_handle, NVS_KEY_MODBUS_RX, (uint8_t)val);
+    }   
+    if (get_json_int(root, "modbusPortNum", &val) && val >= 0 && val <= 255) {
+        nvs_set_u8(my_handle, NVS_KEY_MODBUS_PORT_NUM, (uint8_t)val);
+    }
+    if (get_json_int(root, "modbusBaudRate", &val) && (val >= 1200 && val <= 115200)) {
+        nvs_set_u32(my_handle, NVS_KEY_MODBUS_BAUD_RATE, (uint32_t)val);
+    }
 
     nvs_commit(my_handle);
     nvs_close(my_handle);
@@ -354,6 +369,11 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
     cJSON_AddNumberToObject(root, "dataReadInterval", data_read_interval_s);
     cJSON_AddNumberToObject(root, "sysDataSendInterval", sys_data_send_interval_s);
     cJSON_AddNumberToObject(root, "webServerPort", webserver_port);
+    cJSON_AddNumberToObject(root, "modbusAddr", modbus_addr);
+    cJSON_AddNumberToObject(root, "modbusTx", modbus_tx);
+    cJSON_AddNumberToObject(root, "modbusRx", modbus_rx);
+    cJSON_AddNumberToObject(root, "modbusPortNum", modbus_port_num);
+    cJSON_AddNumberToObject(root, "modbusBaudRate", modbus_baud_rate);
 
     char *response = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);

@@ -7,6 +7,11 @@ uint8_t data_read_interval_s = 0;
 uint8_t sys_data_send_interval_s = 0;
 uint16_t webserver_port = 0;
 uint16_t mqtt_port = 0;
+uint8_t modbus_addr = 0;
+uint8_t modbus_tx = 0;
+uint8_t modbus_rx = 0;
+uint8_t modbus_port_num = 0;
+uint32_t modbus_baud_rate = 0;
 
 void nvs_init(void)
 {
@@ -42,6 +47,11 @@ void nvs_init(void)
     nvs_get_u8(my_handle, NVS_KEY_SYS_SEC, &sys_data_send_interval_s);
     nvs_get_u16(my_handle, NVS_KEY_WEB_PORT, &webserver_port);
     nvs_get_u16(my_handle, NVS_KEY_MQTT_PORT, &mqtt_port);
+    nvs_get_u8(my_handle, NVS_KEY_MODBUS_ADDR, &modbus_addr);
+    nvs_get_u8(my_handle, NVS_KEY_MODBUS_TX, &modbus_tx);
+    nvs_get_u8(my_handle, NVS_KEY_MODBUS_RX, &modbus_rx);
+    nvs_get_u8(my_handle, NVS_KEY_MODBUS_PORT_NUM, &modbus_port_num);
+    nvs_get_u32(my_handle, NVS_KEY_MODBUS_BAUD_RATE, &modbus_baud_rate);
 
     nvs_close(my_handle);
 
@@ -70,6 +80,11 @@ esp_err_t nvs_reset_saved_settings()
     nvs_set_u16(my_handle, NVS_KEY_WEB_PORT, 80);
     nvs_set_str(my_handle, NVS_DISCOVERY_TOPIC, "homeassistant");
     nvs_set_i8(my_handle, NVS_KEY_NEED_INIT, 0);
+    nvs_set_u8(my_handle, NVS_KEY_MODBUS_ADDR, 1);
+    nvs_set_u8(my_handle, NVS_KEY_MODBUS_TX, 17);
+    nvs_set_u8(my_handle, NVS_KEY_MODBUS_RX, 16);
+    nvs_set_u8(my_handle, NVS_KEY_MODBUS_PORT_NUM, 1);
+    nvs_set_u32(my_handle, NVS_KEY_MODBUS_BAUD_RATE, 9600);
 
     err = nvs_commit(my_handle);
     nvs_close(my_handle);

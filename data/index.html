@@ -136,6 +136,49 @@
             </div>
           </div>
 
+          <div class="card">
+            <div class="card-header">
+              <h2>04. Modbus Configuration</h2>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="modbusAddr" class="required-label">Address</label>
+                <div class="input-wrapper">
+                  <input id="modbusAddr" name="modbusAddr" type="number" min="0" max="247" placeholder="1...247" required />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="modbusTx" class="required-label">TX pin</label>
+                <div class="input-wrapper">
+                  <input id="modbusTx" name="modbusTx" type="number" min="0" max="40" placeholder="0...40" required />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="modbusRx" class="required-label">RX pin</label>
+                <div class="input-wrapper">
+                  <input id="modbusRx" name="modbusRx" type="number" min="0" max="40" placeholder="0...40" required />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="modbusPortNum" class="required-label">UART Port</label>
+                <div class="input-wrapper">
+                  <input id="modbusPortNum" name="modbusPortNum" type="number" min="0" max="255" required />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="modbusBaudRate" class="required-label">Baud Rate</label>
+                <div class="input-wrapper">
+                  <input id="modbusBaudRate" name="modbusBaudRate" type="number" min="1200" max="115200" placeholder="1200...115200" required />
+                </div>
+                </div>
+              
+            </div>
+          </div>
+
           <div id="formStatus" class="status-banner">System ready.</div>
 
           <div class="btn-group">

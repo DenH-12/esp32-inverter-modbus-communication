@@ -39,12 +39,21 @@ void app_main(void)
     wifi_init();
     mqtt_init();
     webserver_init();
-    modbus_init();
+
+    esp_err_t err = modbus_init();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to initialize Modbus");
+        return;
+    }
 
     ESP_LOGI(TAG, "System ready");
 
     // Tasks
-    xTaskCreate(modbus_read_task, "modbus_read_task", 8192, NULL, 5, NULL);
+    if (err == ESP_OK)
+    {
+        xTaskCreate(modbus_read_task, "modbus_read_task", 8192, NULL, 5, NULL);
+    }
     xTaskCreate(update_system_info_task, "update_system_info_task", 4096, NULL, 5, NULL);
     xTaskCreate(ota_validation_task, "ota_val_task", 3072, NULL, 5, NULL);
 }
