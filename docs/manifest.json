@@ -1,0 +1,16 @@
+{
+  "name": "ESP32 Solar Inverter Modbus",
+  "version": "2.2.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        {
+          "path": "https://github.com/DenH-12/esp32-inverter-modbus-communication/releases/download/v2.2.0/full-firmware.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}
