@@ -1,57 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32 Inverter Modbus Firmware Installer</title>
-  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      background-color: #0d1117;
-      color: #c9d1d9;
-    }
-    .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      padding: 32px;
-      max-width: 480px;
-      text-align: center;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-    }
-    h1 { font-size: 1.5rem; margin-bottom: 12px; color: #f0f6fc; }
-    p { color: #8b949e; line-height: 1.5; margin-bottom: 24px; }
-    esp-web-install-button button {
-      background-color: #238636;
-      color: #ffffff;
-      border: none;
-      border-radius: 6px;
-      padding: 12px 24px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    esp-web-install-button button:hover { background-color: #2ea043; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Inverter Modbus Firmware Installer</title>
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #0d1117;
+            color: #c9d1d9;
+        }
+
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 480px;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+            color: #f0f6fc;
+        }
+
+        p {
+            color: #8b949e;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+
+        esp-web-install-button button {
+            background-color: #238636;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        esp-web-install-button button:hover {
+            background-color: #2ea043;
+        }
+    </style>
 </head>
+
 <body>
 
-  <div class="card">
-    <h1>ESP32 Modbus Firmware Installer</h1>
-    <p>Connect your ESP32 to USB and click below to flash the latest firmware directly from your browser.</p>
+    <div class="card">
+        <h1>ESP32 Modbus Firmware Installer</h1>
+        <p>Connect your ESP32 to USB and click below to flash the latest firmware directly from your browser.</p>
 
-    <esp-web-install-button manifest="manifest.json">
-      <button slot="activate">Install Firmware</button>
-      <span slot="unsupported">Your browser does not support Web Serial. Use Chrome, Edge on desktop.</span>
-    </esp-web-install-button>
-  </div>
+        <esp-web-install-button manifest="manifest.json">
+            <button slot="activate">Install Firmware</button>
+            <span slot="unsupported">Your browser does not support Web Serial. Use Chrome, Edge on desktop.</span>
+        </esp-web-install-button>
+    </div>
 
 </body>
+
 </html>

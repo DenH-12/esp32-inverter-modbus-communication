@@ -7,7 +7,7 @@
       "chipFamily": "ESP32",
       "parts": [
         {
-          "path": "https://github.com/DenH-12/esp32-inverter-modbus-communication/releases/download/v2.2.0/full-firmware.bin",
+          "path": "full-firmware.bin",
           "offset": 0
         }
       ]
