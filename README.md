@@ -30,3 +30,4 @@ esptool --chip esp32 --port /dev/ttyUSB0 --baud 460800 write-flash 0x0 full-firm
 After flashing the firmware:
 1. Connect to the ESP32 Wi-Fi Access Point (AP) named **ESP32_Solar_********.
 2. Open your web browser and navigate to: [http://192.168.4.1](http://192.168.4.1)
+<img width="1136" height="839" alt="image" src="https://github.com/user-attachments/assets/bf32271d-7cb9-4b2f-8b0b-dad5dee4acc9" />
